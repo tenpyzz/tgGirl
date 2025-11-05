@@ -6,9 +6,14 @@ let handlersImported = false
 
 function ensureHandlers() {
   if (!handlersImported) {
-    // Динамический импорт обработчиков только во время выполнения
-    require('@/lib/bot-handlers')
-    handlersImported = true
+    try {
+      // Динамический импорт обработчиков только во время выполнения
+      require('@/lib/bot-handlers')
+      handlersImported = true
+    } catch (error) {
+      console.error('Ошибка импорта обработчиков бота:', error)
+      // Не блокируем запуск приложения, если обработчики не загрузились
+    }
   }
 }
 
