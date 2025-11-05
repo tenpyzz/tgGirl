@@ -1,0 +1,75 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Модель пользователя Telegram
+model User {
+  id            Int      @id @default(autoincrement())
+  telegramId    BigInt   @unique // ID пользователя в Telegram
+  username      String?  // Username пользователя
+  firstName     String?
+  lastName      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Связь с чатами
+  chats         Chat[]
+}
+
+// Модель девушки (ИИ персонажа)
+model Girl {
+  id            Int      @id @default(autoincrement())
+  name          String   // Имя девушки
+  description   String?  // Описание
+  photoUrl      String?  // URL фото (будет добавлено позже)
+  systemPrompt  String   // Системный промпт для ИИ
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Связь с чатами
+  chats         Chat[]
+}
+
+// Модель чата между пользователем и девушкой
+model Chat {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  girlId        Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Связи
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  girl          Girl     @relation(fields: [girlId], references: [id], onDelete: Cascade)
+  
+  // Сообщения в чате
+  messages      Message[]
+  
+  @@unique([userId, girlId]) // Один чат на пользователя и девушку
+  @@index([userId])
+  @@index([girlId])
+}
+
+// Модель сообщения
+model Message {
+  id            Int      @id @default(autoincrement())
+  chatId        Int
+  role          String   // 'user' или 'assistant'
+  content       String   // Текст сообщения
+  createdAt     DateTime @default(now())
+  
+  // Связь с чатом
+  chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  
+  @@index([chatId])
+  @@index([createdAt])
+}
+
