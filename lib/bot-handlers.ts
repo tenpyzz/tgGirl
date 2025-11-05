@@ -1,7 +1,7 @@
 import { bot } from './telegram'
 import { TelegramBot } from 'node-telegram-bot-api'
 
-// URL вашего Mini App (замените на реальный URL при деплое)
+// URL вашего Mini App (замените на реальный URL при деплое на Railway)
 const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
 // Обработчик команды /start
@@ -65,5 +65,5 @@ bot.on('polling_error', (error) => {
   console.error('Ошибка polling:', error)
 })
 
-console.log('Telegram бот инициализирован')
+console.log('✅ Telegram бот инициализирован')
 

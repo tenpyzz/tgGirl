@@ -1,6 +1,7 @@
 {
   "name": "tg-miniapp-clean",
   "version": "0.1.0",
+  "description": "Telegram Mini App для общения с ИИ-девушками",
   "private": true,
   "scripts": {
     "dev": "next dev",

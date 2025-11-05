@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log('Начинаем заполнение базы данных...')
+  console.log('🌱 Начинаем заполнение базы данных...')
 
   // Создаем девушку с системным промптом для ИИ
   const girl = await prisma.girl.upsert({
@@ -18,8 +18,8 @@ async function main() {
     },
   })
 
-  console.log('Девушка создана:', girl)
-  console.log('База данных успешно заполнена!')
+  console.log('✅ Девушка создана:', girl.name)
+  console.log('🎉 База данных успешно заполнена!')
 }
 
 main()
