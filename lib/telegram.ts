@@ -13,5 +13,11 @@ export const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, {
 // Инициализация вебхука для production (Railway)
 if (process.env.NODE_ENV === 'production' && process.env.WEBHOOK_URL) {
   bot.setWebHook(process.env.WEBHOOK_URL)
+    .then(() => {
+      console.log('✅ Webhook установлен:', process.env.WEBHOOK_URL)
+    })
+    .catch((error: unknown) => {
+      console.error('❌ Ошибка установки webhook:', error)
+    })
 }
 
