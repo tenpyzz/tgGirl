@@ -161,7 +161,7 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
     
     await bot.sendMessage(
       chatId,
-      'Добро пожаловать! 👋\n\nЭто бот для общения с ИИ-девушками. Выберите девушку для общения в мини-приложении.',
+      'Добро пожаловать! 👋\n\nЭто бот для общения с ИИ-девушками. Чтобы начать общение, пожалуйста, откройте мини-приложение и выберите девушку',
       {
         reply_markup: {
           inline_keyboard: [
@@ -221,16 +221,31 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     try {
       const data = JSON.parse(msg.web_app_data.data)
       if (data.action === 'girl_selected') {
-        // Получаем пользователя
-        const user = await getOrCreateUser(
+        // Получаем пользователя (обновляем данные, чтобы убедиться, что выбор актуален)
+        let user = await getOrCreateUser(
           telegramUserId,
           from.username,
           from.first_name,
           from.last_name
         )
         
+        // Если в данных есть girlId, обновляем выбор девочки
+        if (data.girlId && typeof data.girlId === 'number') {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: { selectedGirlId: data.girlId },
+            include: { selectedGirl: true },
+          })
+        } else {
+          // Если girlId нет в данных, получаем пользователя с актуальными данными
+          user = await prisma.user.findUnique({
+            where: { id: user.id },
+            include: { selectedGirl: true },
+          })
+        }
+        
         // Проверяем, выбрана ли девочка
-        if (user.selectedGirlId && user.selectedGirl) {
+        if (user && user.selectedGirlId && user.selectedGirl) {
           const girl = user.selectedGirl
           
           // Генерируем приветственное сообщение от девочки через ИИ
@@ -340,19 +355,23 @@ bot.on('message', async (msg: TelegramBot.Message) => {
 
     // Проверяем, выбрал ли пользователь девочку
     if (!user.selectedGirlId || !user.selectedGirl) {
-      // Если девочка не выбрана, предлагаем открыть Mini App
-      await bot.sendMessage(chatId, 'Сначала выберите девушку для общения:', {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: 'Открыть Mini App 👉',
-                web_app: { url: MINI_APP_URL }
-              }
+      // Если девочка не выбрана, напоминаем перейти в Mini App и выбрать девочку
+      await bot.sendMessage(
+        chatId,
+        'Пожалуйста, сначала откройте мини-приложение и выберите девушку для общения! 👇\n\nТолько после выбора девушки вы сможете начать общение с ней.',
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Открыть Mini App 👉',
+                  web_app: { url: MINI_APP_URL }
+                }
+              ]
             ]
-          ]
+          }
         }
-      })
+      )
       return
     }
 
