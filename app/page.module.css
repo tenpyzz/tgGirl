@@ -219,6 +219,41 @@
   box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
+.paymentMethodButtonDisabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  background: #f5f5f5 !important;
+  border: 2px dashed #ccc !important;
+}
+
+.paymentMethodButtonDisabled:hover {
+  background: #f5f5f5 !important;
+  opacity: 0.7;
+}
+
+.paymentMethodButtonDisabled:active {
+  transform: none;
+}
+
+.inDevelopmentBadge {
+  display: inline-block;
+  padding: 3px 10px;
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .packageCard {
   background: white;
   border-radius: 12px;

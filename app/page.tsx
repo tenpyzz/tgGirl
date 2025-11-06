@@ -40,6 +40,13 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>('main')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'usd'>('stars')
+
+  // Предотвращаем выбор оплаты картой (в разработке)
+  useEffect(() => {
+    if (paymentMethod === 'usd') {
+      setPaymentMethod('stars')
+    }
+  }, [paymentMethod])
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminUsers, setAdminUsers] = useState<User[]>([])
   const [adminLoading, setAdminLoading] = useState(false)
@@ -439,10 +446,17 @@ export default function Home() {
               ⭐ Telegram Stars
             </button>
             <button
-              className={`${styles.paymentMethodButton} ${paymentMethod === 'usd' ? styles.paymentMethodButtonActive : ''}`}
-              onClick={() => setPaymentMethod('usd')}
+              className={`${styles.paymentMethodButton} ${styles.paymentMethodButtonDisabled}`}
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+                  window.Telegram.WebApp.showAlert('Оплата картой в разработке. Пожалуйста, используйте Telegram Stars.')
+                }
+              }}
+              disabled
+              title="В разработке"
             >
-              💳 Карта (USD)
+              <span>💳 Карта (USD)</span>
+              <span className={styles.inDevelopmentBadge}>В разработке</span>
             </button>
           </div>
 
@@ -486,11 +500,23 @@ export default function Home() {
                   </div>
                 </div>
                 <button
-                  className={`${styles.packageButton} ${isProcessingPayment ? styles.packageButtonDisabled : ''}`}
-                  onClick={() => handleTopup(pkg.id)}
-                  disabled={isProcessingPayment}
+                  className={`${styles.packageButton} ${isProcessingPayment || paymentMethod === 'usd' ? styles.packageButtonDisabled : ''}`}
+                  onClick={() => {
+                    if (paymentMethod === 'usd') {
+                      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+                        window.Telegram.WebApp.showAlert('Оплата картой в разработке. Пожалуйста, переключитесь на Telegram Stars.')
+                      }
+                      return
+                    }
+                    handleTopup(pkg.id)
+                  }}
+                  disabled={isProcessingPayment || paymentMethod === 'usd'}
                 >
-                  {isProcessingPayment ? 'Обработка...' : 'Купить со скидкой'}
+                  {paymentMethod === 'usd' 
+                    ? 'В разработке' 
+                    : isProcessingPayment 
+                    ? 'Обработка...' 
+                    : 'Купить со скидкой'}
                 </button>
               </div>
             ))}
