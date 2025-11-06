@@ -32,11 +32,6 @@ export default function AdminPage() {
   const [totalPages, setTotalPages] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
 
-  useEffect(() => {
-    initTelegramWebApp()
-    fetchUsers()
-  }, [page])
-
   const fetchUsers = async () => {
     try {
       setLoading(true)
@@ -68,6 +63,12 @@ export default function AdminPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    initTelegramWebApp()
+    fetchUsers()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page])
 
   const handleUserClick = (userId: number) => {
     router.push(`/admin/users/${userId}`)

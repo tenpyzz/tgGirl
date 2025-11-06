@@ -14,7 +14,7 @@ function isAdmin(telegramUserId: number | null): boolean {
 
 export async function GET(
   request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   try {
     const telegramUserId = getTelegramUserId(request)
@@ -26,7 +26,8 @@ export async function GET(
       )
     }
 
-    const userId = parseInt(params.userId)
+    const { userId: userIdParam } = await params
+    const userId = parseInt(userIdParam)
 
     if (isNaN(userId)) {
       return NextResponse.json(

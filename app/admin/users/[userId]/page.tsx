@@ -70,11 +70,6 @@ export default function UserDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'info' | 'chats' | 'payments'>('info')
 
-  useEffect(() => {
-    initTelegramWebApp()
-    fetchUser()
-  }, [userId])
-
   const fetchUser = async () => {
     try {
       setLoading(true)
@@ -107,6 +102,12 @@ export default function UserDetailPage() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    initTelegramWebApp()
+    fetchUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
 
   if (loading) {
     return (
