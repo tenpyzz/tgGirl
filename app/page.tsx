@@ -83,12 +83,14 @@ export default function Home() {
         }
         
         // Открываем чат с ботом
-        webApp.openTelegramLink(`https://t.me/${botUsername}`)
+        // Бот попытается отправить первое сообщение через API endpoint
+        webApp.openTelegramLink(`https://t.me/${botUsername}?start=girl_selected`)
         
-        // Закрываем мини-приложение
+        // Закрываем мини-приложение с небольшой задержкой
+        // чтобы дать время боту отправить сообщение
         setTimeout(() => {
           webApp.close()
-        }, 500)
+        }, 1000)
       }
     } catch (error) {
       console.error('Ошибка при выборе девочки:', error)

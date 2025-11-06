@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTelegramUserId } from '@/lib/telegram-utils'
+import { sendFirstMessageToUser } from '@/lib/bot-handlers'
 
 export async function POST(request: Request) {
   try {
@@ -55,7 +56,16 @@ export async function POST(request: Request) {
       })
     }
 
-    // Бот отправит приветствие автоматически при получении данных от WebApp
+    // Пытаемся отправить первое сообщение пользователю
+    // Это работает, если пользователь уже писал боту (бот знает его chatId)
+    try {
+      await sendFirstMessageToUser(telegramUserId)
+    } catch (error) {
+      console.error('Ошибка отправки первого сообщения:', error)
+      // Не блокируем ответ, если не удалось отправить сообщение
+      // Бот отправит его при первом сообщении от пользователя
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Девочка выбрана',
