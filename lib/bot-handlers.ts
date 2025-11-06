@@ -4,6 +4,9 @@ import { prisma } from './prisma'
 import { openrouter } from './openrouter'
 import type OpenAI from 'openai'
 
+// Убеждаемся, что бот инициализирован перед регистрацией обработчиков
+console.log('🔄 Начинаем регистрацию обработчиков бота...')
+
 // URL вашего Mini App
 const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'
 
@@ -437,4 +440,15 @@ console.log('  - /help команда')
 console.log('  - Все сообщения (message event)')
 console.log('  - Callback queries')
 console.log('  - Polling errors')
+
+// Проверяем, что бот доступен
+try {
+  bot.getMe().then((info) => {
+    console.log('✅ Бот доступен:', info.username, info.id)
+  }).catch((error) => {
+    console.error('❌ Ошибка получения информации о боте:', error)
+  })
+} catch (error) {
+  console.error('❌ Ошибка при проверке бота:', error)
+}
 

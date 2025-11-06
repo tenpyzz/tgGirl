@@ -40,9 +40,29 @@ function getBot(): TelegramBot {
     
     // Инициализация вебхука для production (Railway)
     if (process.env.NODE_ENV === 'production' && process.env.WEBHOOK_URL) {
-      botInstance.setWebHook(process.env.WEBHOOK_URL)
+      // Убеждаемся, что URL правильный
+      let webhookUrl = process.env.WEBHOOK_URL
+      
+      // Если URL не содержит /api/, добавляем его
+      if (!webhookUrl.includes('/api/')) {
+        // Проверяем, есть ли /bot/webhook в URL
+        if (webhookUrl.includes('/bot/webhook')) {
+          // Заменяем /bot/webhook на /api/bot/webhook
+          webhookUrl = webhookUrl.replace('/bot/webhook', '/api/bot/webhook')
+        } else if (webhookUrl.endsWith('/webhook')) {
+          // Если просто /webhook, заменяем на /api/webhook
+          webhookUrl = webhookUrl.replace('/webhook', '/api/webhook')
+        } else {
+          // Добавляем /api/webhook если его нет
+          webhookUrl = webhookUrl.replace(/\/$/, '') + '/api/webhook'
+        }
+      }
+      
+      console.log('🔧 Устанавливаем webhook на:', webhookUrl)
+      
+      botInstance.setWebHook(webhookUrl)
         .then(() => {
-          console.log('✅ Webhook установлен:', process.env.WEBHOOK_URL)
+          console.log('✅ Webhook установлен:', webhookUrl)
         })
         .catch((error: unknown) => {
           console.error('❌ Ошибка установки webhook:', error)

@@ -7,13 +7,25 @@ let handlersImported = false
 function ensureHandlers() {
   if (!handlersImported) {
     try {
+      console.log('🔄 Загружаем обработчики бота...')
       // Динамический импорт обработчиков только во время выполнения
       require('@/lib/bot-handlers')
       handlersImported = true
       console.log('✅ Обработчики бота загружены через /bot/webhook')
+      
+      // Проверяем, что бот инициализирован
+      try {
+        const botInfo = bot.getMe()
+        console.log('✅ Бот инициализирован, обработчики готовы')
+      } catch (error) {
+        console.error('❌ Ошибка проверки бота:', error)
+      }
     } catch (error) {
       console.error('❌ Ошибка импорта обработчиков бота:', error)
+      console.error('❌ Детали ошибки:', error instanceof Error ? error.stack : String(error))
     }
+  } else {
+    console.log('ℹ️ Обработчики уже загружены')
   }
 }
 
