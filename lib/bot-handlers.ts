@@ -92,9 +92,9 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
       role: 'system',
       content: girl.systemPrompt,
     },
-    ...chatHistory.map((msg) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
+    ...chatHistory.map((message: { role: string; content: string }) => ({
+      role: message.role as 'user' | 'assistant',
+      content: message.content,
     })),
   ]
 
@@ -129,9 +129,10 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
   const chatId = msg.chat.id
-  const telegramUserId = msg.from?.id
+  const from = msg.from
+  const telegramUserId = from?.id
 
-  if (!telegramUserId) {
+  if (!telegramUserId || !from) {
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
@@ -140,9 +141,9 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
     // Получаем или создаем пользователя
     const user = await getOrCreateUser(
       telegramUserId,
-      msg.from.username,
-      msg.from.first_name,
-      msg.from.last_name
+      from.username,
+      from.first_name,
+      from.last_name
     )
 
     // Проверяем, выбрал ли пользователь девочку
@@ -201,9 +202,10 @@ bot.on('message', async (msg: TelegramBot.Message) => {
   }
 
   const chatId = msg.chat.id
-  const telegramUserId = msg.from?.id
+  const from = msg.from
+  const telegramUserId = from?.id
 
-  if (!telegramUserId) {
+  if (!telegramUserId || !from) {
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
@@ -212,9 +214,9 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     // Получаем или создаем пользователя
     const user = await getOrCreateUser(
       telegramUserId,
-      msg.from.username,
-      msg.from.first_name,
-      msg.from.last_name
+      from.username,
+      from.first_name,
+      from.last_name
     )
 
     // Проверяем, выбрал ли пользователь девочку
