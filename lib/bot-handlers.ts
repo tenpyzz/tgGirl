@@ -529,6 +529,19 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         } as any,
       })
 
+      // Сохраняем историю платежа
+      await prisma.paymentHistory.create({
+        data: {
+          userId: user.id,
+          packageId: packageId,
+          packageName: pkg.name,
+          messages: pkg.messages,
+          stars: pkg.stars,
+          invoicePayload: msg.successful_payment.invoice_payload || null,
+          telegramPaymentId: msg.successful_payment.telegram_payment_charge_id || null,
+        },
+      })
+
       console.log(`Баланс пользователя ${telegramUserId} пополнен на ${pkg.messages} сообщений. Новый баланс: ${(updatedUser as any).messageBalance}`)
 
       // Отправляем подтверждение пользователю

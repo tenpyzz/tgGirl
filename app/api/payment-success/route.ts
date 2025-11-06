@@ -54,6 +54,18 @@ export async function POST(request: Request) {
       } as any,
     })
 
+    // Сохраняем историю платежа
+    await prisma.paymentHistory.create({
+      data: {
+        userId: user.id,
+        packageId: packageId,
+        packageName: pkg.name,
+        messages: pkg.messages,
+        stars: pkg.stars,
+        invoicePayload: JSON.stringify({ packageId, userId: telegramUserId, messages: pkg.messages }),
+      },
+    })
+
     return NextResponse.json({
       success: true,
       balance: (updatedUser as any).messageBalance,

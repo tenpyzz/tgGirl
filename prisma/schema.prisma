@@ -25,6 +25,9 @@ model User {
   // Связь с чатами
   chats         Chat[]
   selectedGirl  Girl?    @relation("SelectedGirl", fields: [selectedGirlId], references: [id])
+  
+  // История платежей
+  payments      PaymentHistory[]
 }
 
 // Модель девушки (ИИ персонажа)
@@ -74,6 +77,25 @@ model Message {
   chat          Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
   
   @@index([chatId])
+  @@index([createdAt])
+}
+
+// Модель истории платежей
+model PaymentHistory {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  packageId     Int      // ID пакета пополнения (1, 2, 3)
+  packageName   String   // Название пакета (Базовый, Стандартный, Премиум)
+  messages      Int      // Количество сообщений, добавленных в баланс
+  stars         Int      // Количество Telegram Stars, потраченных на оплату
+  invoicePayload String? // Payload из инвойса (JSON строка)
+  telegramPaymentId String? // ID платежа в Telegram
+  createdAt     DateTime @default(now())
+  
+  // Связь с пользователем
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
   @@index([createdAt])
 }
 
