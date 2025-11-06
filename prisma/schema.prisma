@@ -18,6 +18,7 @@ model User {
   firstName     String?
   lastName      String?
   selectedGirlId Int?    // ID выбранной девочки
+  messageBalance Int     @default(10) // Количество доступных сообщений
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   

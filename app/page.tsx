@@ -15,6 +15,7 @@ export default function Home() {
   const [girl, setGirl] = useState<Girl | null>(null)
   const [loading, setLoading] = useState(true)
   const [isSelecting, setIsSelecting] = useState(false)
+  const [balance, setBalance] = useState<number | null>(null)
 
   useEffect(() => {
     // Инициализация Telegram WebApp
@@ -22,7 +23,27 @@ export default function Home() {
 
     // Загрузка списка девушек
     fetchGirls()
+    
+    // Загрузка баланса
+    fetchBalance()
   }, [])
+
+  const fetchBalance = async () => {
+    try {
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch('/api/balance', {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setBalance(data.balance)
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки баланса:', error)
+    }
+  }
 
   const fetchGirls = async () => {
     try {
@@ -132,6 +153,15 @@ export default function Home() {
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Выберите девушку</h1>
+      
+      {balance !== null && (
+        <div className={styles.balanceCard}>
+          <div className={styles.balanceInfo}>
+            <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
+            <span className={styles.balanceValue}>{balance}</span>
+          </div>
+        </div>
+      )}
       
       <div 
         className={`${styles.girlCard} ${isSelecting ? styles.disabled : ''}`}

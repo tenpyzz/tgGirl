@@ -46,7 +46,8 @@ export async function POST(request: Request) {
         data: {
           telegramId: BigInt(telegramUserId),
           selectedGirlId: girlId,
-        },
+          messageBalance: 10, // Начальный баланс - 10 бесплатных сообщений
+        } as any, // Type assertion для временного обхода ошибки типов
       })
     } else {
       // Обновляем выбранную девочку

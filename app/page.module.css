@@ -86,3 +86,28 @@
   line-height: 1.5;
 }
 
+.balanceCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.balanceInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.balanceLabel {
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.balanceValue {
+  font-size: 24px;
+  font-weight: 700;
+}
+

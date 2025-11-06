@@ -23,7 +23,8 @@ async function getOrCreateUser(telegramId: number, username?: string, firstName?
         username,
         firstName,
         lastName,
-      },
+        messageBalance: 10, // Начальный баланс - 10 бесплатных сообщений
+      } as any, // Type assertion для временного обхода ошибки типов
       include: { selectedGirl: true },
     })
   } else {
@@ -646,14 +647,68 @@ bot.on('message', async (msg: TelegramBot.Message) => {
       console.log('Уже есть сообщения от девочки, продолжаем обычный диалог')
     }
 
+    // Проверяем баланс сообщений
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.id },
+    })
+
+    if (!currentUser) {
+      await bot.sendMessage(chatId, 'Ошибка: пользователь не найден')
+      return
+    }
+
+    // Проверяем баланс (используем type assertion, так как поле будет доступно после генерации Prisma Client)
+    const messageBalance = (currentUser as any).messageBalance ?? 0
+
+    if (messageBalance <= 0) {
+      // Баланс исчерпан, отправляем сообщение о необходимости оплаты
+      await bot.sendMessage(
+        chatId,
+        `😔 У вас закончились бесплатные сообщения.\n\nДля продолжения общения с ${user.selectedGirl?.name || 'девушкой'} необходимо пополнить баланс.\n\n💬 Осталось сообщений: 0\n\nПожалуйста, пополните баланс, чтобы продолжить общение.`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Пополнить баланс 💳',
+                  web_app: { url: MINI_APP_URL }
+                }
+              ]
+            ]
+          }
+        }
+      )
+      return
+    }
+
+    if (!user.selectedGirlId) {
+      await bot.sendMessage(chatId, 'Ошибка: девочка не выбрана')
+      return
+    }
+
+    // Списываем одно сообщение перед генерацией ответа
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        messageBalance: {
+          decrement: 1,
+        },
+      } as any, // Type assertion для временного обхода ошибки типов
+    })
+
     // Показываем индикатор печати
     await bot.sendChatAction(chatId, 'typing')
 
     // Генерируем ответ от девочки
     const response = await generateGirlResponse(user.id, user.selectedGirlId, msg.text)
 
-    // Отправляем ответ
-    await bot.sendMessage(chatId, response)
+    // Отправляем ответ с информацией об оставшемся балансе
+    const remainingMessages = (updatedUser as any).messageBalance ?? 0
+    const balanceInfo = remainingMessages > 0 
+      ? `\n\n💬 Осталось сообщений: ${remainingMessages}`
+      : `\n\n💬 Осталось сообщений: 0\n\nДля продолжения общения необходимо пополнить баланс.`
+    
+    await bot.sendMessage(chatId, response + balanceInfo)
   } catch (error) {
     console.error('Ошибка при обработке сообщения:', error)
     await bot.sendMessage(chatId, 'Извините, произошла ошибка. Попробуйте позже.')
