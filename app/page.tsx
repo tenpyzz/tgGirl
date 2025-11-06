@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { initTelegramWebApp } from '@/lib/telegram-webapp'
+import { PACKAGES, getPackageUsdPrice, type PackageId } from '@/lib/packages'
 import styles from './page.module.css'
 
 interface Girl {
@@ -38,6 +39,7 @@ export default function Home() {
   const [balance, setBalance] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('main')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [paymentMethod, setPaymentMethod] = useState<'stars' | 'usd'>('stars')
   const [isAdmin, setIsAdmin] = useState(false)
   const [adminUsers, setAdminUsers] = useState<User[]>([])
   const [adminLoading, setAdminLoading] = useState(false)
@@ -142,7 +144,7 @@ export default function Home() {
           'Content-Type': 'application/json',
           ...(initData ? { 'x-telegram-init-data': initData } : {}),
         },
-        body: JSON.stringify({ packageId }),
+        body: JSON.stringify({ packageId, paymentMethod }),
       })
 
       if (!response.ok) {
@@ -292,35 +294,18 @@ export default function Home() {
     )
   }
 
-  const packages = [
-    { 
-      id: 1, 
-      messages: 200, 
-      stars: 249, 
-      oldStars: 349, 
-      discount: 29, 
-      savings: 100, 
-      name: 'Базовый' 
-    },
-    { 
-      id: 2, 
-      messages: 1000, 
-      stars: 999, 
-      oldStars: 1299, 
-      discount: 23, 
-      savings: 300, 
-      name: 'Стандартный' 
-    },
-    { 
-      id: 3, 
-      messages: 3000, 
-      stars: 2499, 
-      oldStars: 2999, 
-      discount: 17, 
-      savings: 500, 
-      name: 'Премиум' 
-    },
-  ]
+  // Используем пакеты из lib/packages.ts
+  const packages = Object.entries(PACKAGES).map(([id, pkg]) => {
+    const packageId = Number(id) as PackageId
+    const usdPrice = getPackageUsdPrice(packageId)
+    return {
+      id: packageId,
+      messages: pkg.messages,
+      stars: pkg.stars,
+      usdPrice: usdPrice,
+      name: pkg.name,
+    }
+  })
 
   return (
     <div className={styles.container}>
@@ -414,28 +399,44 @@ export default function Home() {
             </div>
           )}
 
+          {/* Переключатель метода оплаты */}
+          <div className={styles.paymentMethodSelector}>
+            <button
+              className={`${styles.paymentMethodButton} ${paymentMethod === 'stars' ? styles.paymentMethodButtonActive : ''}`}
+              onClick={() => setPaymentMethod('stars')}
+            >
+              ⭐ Telegram Stars
+            </button>
+            <button
+              className={`${styles.paymentMethodButton} ${paymentMethod === 'usd' ? styles.paymentMethodButtonActive : ''}`}
+              onClick={() => setPaymentMethod('usd')}
+            >
+              💳 Карта (USD)
+            </button>
+          </div>
+
           <div className={styles.packagesContainer}>
             {packages.map((pkg) => (
               <div key={pkg.id} className={styles.packageCard}>
                 <div className={styles.packageHeader}>
                   <div className={styles.packageTitleContainer}>
                     <h3 className={styles.packageName}>{pkg.name}</h3>
-                    <div className={styles.discountBadge}>
-                      -{pkg.discount}%
-                    </div>
                   </div>
                   <div className={styles.packageMessages}>{pkg.messages} сообщений</div>
                 </div>
                 <div className={styles.packagePriceContainer}>
                   <div className={styles.packagePrice}>
-                    <div className={styles.priceRow}>
-                      <span className={styles.oldPrice}>{pkg.oldStars}</span>
-                      <span className={styles.packageStars}>{pkg.stars}</span>
-                      <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
-                    </div>
-                    <div className={styles.savingsBadge}>
-                      💰 Вы экономите {pkg.savings} звезд!
-                    </div>
+                    {paymentMethod === 'stars' ? (
+                      <div className={styles.priceRow}>
+                        <span className={styles.packageStars}>{pkg.stars}</span>
+                        <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
+                      </div>
+                    ) : (
+                      <div className={styles.priceRow}>
+                        <span className={styles.packageStars}>${pkg.usdPrice.toFixed(2)}</span>
+                        <span className={styles.packageStarsLabel}>💵 USD</span>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button
@@ -443,7 +444,7 @@ export default function Home() {
                   onClick={() => handleTopup(pkg.id)}
                   disabled={isProcessingPayment}
                 >
-                  {isProcessingPayment ? 'Обработка...' : 'Купить со скидкой'}
+                  {isProcessingPayment ? 'Обработка...' : paymentMethod === 'stars' ? 'Купить за звезды' : 'Купить за карту'}
                 </button>
               </div>
             ))}
@@ -641,6 +642,12 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
               <span className={styles.infoLabel}>Звезд потрачено:</span>
               <span className={styles.infoValue}>{user.stats.totalStarsSpent}</span>
             </div>
+            {user.stats.totalUsdSpent > 0 && (
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>USD потрачено:</span>
+                <span className={styles.infoValue}>${user.stats.totalUsdSpent.toFixed(2)}</span>
+              </div>
+            )}
           </div>
         )}
 
@@ -681,7 +688,12 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
                   </div>
                   <div className={styles.paymentInfo}>
                     <div>Сообщений: {payment.messages}</div>
-                    <div>Звезд: {payment.stars} ⭐</div>
+                    {payment.paymentMethod === 'stars' ? (
+                      <div>Звезд: {payment.stars} ⭐</div>
+                    ) : (
+                      <div>USD: ${payment.usdAmount?.toFixed(2) || '0.00'} 💵</div>
+                    )}
+                    <div>Метод: {payment.paymentMethod === 'stars' ? 'Telegram Stars' : 'Карта (USD)'}</div>
                   </div>
                 </div>
               ))

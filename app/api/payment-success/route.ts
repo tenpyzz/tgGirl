@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTelegramUserId } from '@/lib/telegram-utils'
-
-// Пакеты пополнения
-const PACKAGES = {
-  1: { messages: 200, stars: 249, name: 'Базовый' },
-  2: { messages: 1000, stars: 999, name: 'Стандартный' },
-  3: { messages: 3000, stars: 2499, name: 'Премиум' },
-} as const
+import { PACKAGES, getPackageUsdPrice, type PackageId } from '@/lib/packages'
 
 export async function POST(request: Request) {
   try {
@@ -21,16 +15,23 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { packageId } = body
+    const { packageId, paymentMethod = 'stars' } = body
 
-    if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+    if (!packageId || !PACKAGES[packageId as PackageId]) {
       return NextResponse.json(
         { error: 'Неверный ID пакета' },
         { status: 400 }
       )
     }
 
-    const pkg = PACKAGES[packageId as keyof typeof PACKAGES]
+    if (paymentMethod !== 'stars' && paymentMethod !== 'usd') {
+      return NextResponse.json(
+        { error: 'Неверный метод оплаты. Используйте "stars" или "usd"' },
+        { status: 400 }
+      )
+    }
+
+    const pkg = PACKAGES[packageId as PackageId]
 
     // Получаем пользователя
     const user = await prisma.user.findUnique({
@@ -54,6 +55,10 @@ export async function POST(request: Request) {
       } as any,
     })
 
+    // Определяем сумму в зависимости от метода оплаты
+    const stars = paymentMethod === 'stars' ? pkg.stars : null
+    const usdAmount = paymentMethod === 'usd' ? getPackageUsdPrice(packageId as PackageId) : null
+
     // Сохраняем историю платежа
     await prisma.paymentHistory.create({
       data: {
@@ -61,8 +66,15 @@ export async function POST(request: Request) {
         packageId: packageId,
         packageName: pkg.name,
         messages: pkg.messages,
-        stars: pkg.stars,
-        invoicePayload: JSON.stringify({ packageId, userId: telegramUserId, messages: pkg.messages }),
+        paymentMethod: paymentMethod,
+        stars: stars,
+        usdAmount: usdAmount,
+        invoicePayload: JSON.stringify({ 
+          packageId, 
+          userId: telegramUserId, 
+          messages: pkg.messages,
+          paymentMethod 
+        }),
       },
     })
 

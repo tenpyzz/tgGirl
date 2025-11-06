@@ -87,7 +87,9 @@ model PaymentHistory {
   packageId     Int      // ID пакета пополнения (1, 2, 3)
   packageName   String   // Название пакета (Базовый, Стандартный, Премиум)
   messages      Int      // Количество сообщений, добавленных в баланс
-  stars         Int      // Количество Telegram Stars, потраченных на оплату
+  paymentMethod String   @default("stars") // Метод оплаты: "stars" или "usd"
+  stars         Int?     // Количество Telegram Stars, потраченных на оплату (null для USD)
+  usdAmount     Float?   // Сумма в долларах (null для Stars)
   invoicePayload String? // Payload из инвойса (JSON строка)
   telegramPaymentId String? // ID платежа в Telegram
   createdAt     DateTime @default(now())

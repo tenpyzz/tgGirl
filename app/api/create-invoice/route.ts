@@ -1,12 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getTelegramUserId } from '@/lib/telegram-utils'
-
-// Пакеты пополнения
-const PACKAGES = {
-  1: { messages: 200, stars: 249, name: 'Базовый' },
-  2: { messages: 1000, stars: 999, name: 'Стандартный' },
-  3: { messages: 3000, stars: 2499, name: 'Премиум' },
-} as const
+import { PACKAGES, getPackageUsdPrice, getPackageCentsPrice, type PackageId } from '@/lib/packages'
 
 export async function POST(request: Request) {
   try {
@@ -20,16 +14,23 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { packageId } = body
+    const { packageId, paymentMethod = 'stars' } = body
 
-    if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+    if (!packageId || !PACKAGES[packageId as PackageId]) {
       return NextResponse.json(
         { error: 'Неверный ID пакета' },
         { status: 400 }
       )
     }
 
-    const pkg = PACKAGES[packageId as keyof typeof PACKAGES]
+    if (paymentMethod !== 'stars' && paymentMethod !== 'usd') {
+      return NextResponse.json(
+        { error: 'Неверный метод оплаты. Используйте "stars" или "usd"' },
+        { status: 400 }
+      )
+    }
+
+    const pkg = PACKAGES[packageId as PackageId]
     const botToken = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN
 
     if (!botToken) {
@@ -39,8 +40,13 @@ export async function POST(request: Request) {
       )
     }
 
+    // Определяем валюту и сумму в зависимости от метода оплаты
+    const currency = paymentMethod === 'stars' ? 'XTR' : 'USD'
+    const amount = paymentMethod === 'stars' 
+      ? pkg.stars 
+      : getPackageCentsPrice(packageId as PackageId) // Для USD используем центы
+
     // Создаем инвойс через прямой HTTP запрос к Telegram Bot API
-    // Для Telegram Stars используем валюту "XTR"
     const response = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
       method: 'POST',
       headers: {
@@ -53,13 +59,14 @@ export async function POST(request: Request) {
           packageId,
           userId: telegramUserId,
           messages: pkg.messages,
+          paymentMethod, // Сохраняем метод оплаты в payload
         }),
-        provider_token: '', // Не требуется для Telegram Stars
-        currency: 'XTR', // Telegram Stars
+        provider_token: '', // Не требуется для Telegram Stars и USD
+        currency: currency,
         prices: [
           {
             label: `${pkg.messages} сообщений`,
-            amount: pkg.stars, // Количество Telegram Stars
+            amount: amount,
           },
         ],
       }),
@@ -77,11 +84,15 @@ export async function POST(request: Request) {
       throw new Error('Не удалось создать инвойс')
     }
 
+    const usdPrice = getPackageUsdPrice(packageId as PackageId)
+
     return NextResponse.json({
       invoiceUrl: data.result,
       packageId,
       messages: pkg.messages,
-      stars: pkg.stars,
+      stars: paymentMethod === 'stars' ? pkg.stars : null,
+      usdAmount: paymentMethod === 'usd' ? usdPrice : null,
+      paymentMethod,
     })
   } catch (error) {
     console.error('Ошибка создания инвойса:', error)

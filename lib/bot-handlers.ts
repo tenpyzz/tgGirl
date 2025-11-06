@@ -3,6 +3,7 @@ import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from './prisma'
 import { openrouter } from './openrouter'
 import type OpenAI from 'openai'
+import { PACKAGES, getPackageUsdPrice, type PackageId } from './packages'
 
 // Регистрация обработчиков бота
 
@@ -495,21 +496,23 @@ bot.on('message', async (msg: TelegramBot.Message) => {
 
       // Парсим payload для получения информации о пакете
       let packageId: number | null = null
+      let paymentMethod: 'stars' | 'usd' = 'stars'
       try {
         const payload = JSON.parse(msg.successful_payment.invoice_payload || '{}')
         packageId = payload.packageId
+        paymentMethod = payload.paymentMethod || 'stars' // По умолчанию stars для обратной совместимости
       } catch (e) {
         console.error('Ошибка парсинга payload из платежа:', e)
         return
       }
 
       // Проверяем, что пакет существует
-      if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+      if (!packageId || !PACKAGES[packageId as PackageId]) {
         console.error('Неверный packageId из платежа:', packageId)
         return
       }
 
-      const pkg = PACKAGES[packageId as keyof typeof PACKAGES]
+      const pkg = PACKAGES[packageId as PackageId]
 
       // Получаем или создаем пользователя
       const user = await getOrCreateUser(
@@ -529,6 +532,10 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         } as any,
       })
 
+      // Определяем сумму в зависимости от метода оплаты
+      const stars = paymentMethod === 'stars' ? pkg.stars : null
+      const usdAmount = paymentMethod === 'usd' ? getPackageUsdPrice(packageId as PackageId) : null
+
       // Сохраняем историю платежа
       await prisma.paymentHistory.create({
         data: {
@@ -536,7 +543,9 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           packageId: packageId,
           packageName: pkg.name,
           messages: pkg.messages,
-          stars: pkg.stars,
+          paymentMethod: paymentMethod,
+          stars: stars,
+          usdAmount: usdAmount,
           invoicePayload: msg.successful_payment.invoice_payload || null,
           telegramPaymentId: msg.successful_payment.telegram_payment_charge_id || null,
         },
@@ -851,13 +860,6 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
 })
 
 
-// Пакеты пополнения
-const PACKAGES = {
-  1: { messages: 200, stars: 249, name: 'Базовый' },
-  2: { messages: 1000, stars: 999, name: 'Стандартный' },
-  3: { messages: 3000, stars: 2499, name: 'Премиум' },
-} as const
-
 // Обработчик pre_checkout_query (перед оплатой)
 bot.on('pre_checkout_query', async (query: TelegramBot.PreCheckoutQuery) => {
   try {
@@ -877,7 +879,7 @@ bot.on('pre_checkout_query', async (query: TelegramBot.PreCheckoutQuery) => {
     }
 
     // Проверяем, что пакет существует
-    if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+    if (!packageId || !PACKAGES[packageId as PackageId]) {
       await bot.answerPreCheckoutQuery(query.id, false, {
         error_message: 'Неверный пакет пополнения',
       })
