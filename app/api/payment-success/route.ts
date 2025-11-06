@@ -4,7 +4,7 @@ import { getTelegramUserId } from '@/lib/telegram-utils'
 
 // Пакеты пополнения
 const PACKAGES = {
-  1: { messages: 200, stars: 299, name: 'Базовый' },
+  1: { messages: 200, stars: 249, name: 'Базовый' },
   2: { messages: 1000, stars: 999, name: 'Стандартный' },
   3: { messages: 3000, stars: 2499, name: 'Премиум' },
 } as const

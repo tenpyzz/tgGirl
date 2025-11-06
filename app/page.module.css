@@ -201,8 +201,15 @@
 .packageHeader {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 16px;
+}
+
+.packageTitleContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
 }
 
 .packageName {
@@ -212,21 +219,51 @@
   margin: 0;
 }
 
+.discountBadge {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
+}
+
 .packageMessages {
   font-size: 14px;
   color: #666;
   font-weight: 500;
 }
 
-.packagePrice {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
+.packagePriceContainer {
   margin-bottom: 20px;
 }
 
+.packagePrice {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.priceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.oldPrice {
+  font-size: 18px;
+  font-weight: 500;
+  color: #999;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: #ff6b6b;
+}
+
 .packageStars {
-  font-size: 28px;
+  font-size: 32px;
   font-weight: 700;
   color: #667eea;
 }
@@ -234,6 +271,18 @@
 .packageStarsLabel {
   font-size: 14px;
   color: #666;
+}
+
+.savingsBadge {
+  background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-block;
+  width: fit-content;
+  box-shadow: 0 2px 4px rgba(81, 207, 102, 0.3);
 }
 
 .packageButton {

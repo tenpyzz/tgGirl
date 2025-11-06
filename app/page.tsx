@@ -215,9 +215,33 @@ export default function Home() {
   }
 
   const packages = [
-    { id: 1, messages: 200, stars: 299, name: 'Базовый' },
-    { id: 2, messages: 1000, stars: 999, name: 'Стандартный' },
-    { id: 3, messages: 3000, stars: 2499, name: 'Премиум' },
+    { 
+      id: 1, 
+      messages: 200, 
+      stars: 249, 
+      oldStars: 349, 
+      discount: 29, 
+      savings: 100, 
+      name: 'Базовый' 
+    },
+    { 
+      id: 2, 
+      messages: 1000, 
+      stars: 999, 
+      oldStars: 1299, 
+      discount: 23, 
+      savings: 300, 
+      name: 'Стандартный' 
+    },
+    { 
+      id: 3, 
+      messages: 3000, 
+      stars: 2499, 
+      oldStars: 2999, 
+      discount: 17, 
+      savings: 500, 
+      name: 'Премиум' 
+    },
   ]
 
   return (
@@ -303,19 +327,32 @@ export default function Home() {
             {packages.map((pkg) => (
               <div key={pkg.id} className={styles.packageCard}>
                 <div className={styles.packageHeader}>
-                  <h3 className={styles.packageName}>{pkg.name}</h3>
+                  <div className={styles.packageTitleContainer}>
+                    <h3 className={styles.packageName}>{pkg.name}</h3>
+                    <div className={styles.discountBadge}>
+                      -{pkg.discount}%
+                    </div>
+                  </div>
                   <div className={styles.packageMessages}>{pkg.messages} сообщений</div>
                 </div>
-                <div className={styles.packagePrice}>
-                  <span className={styles.packageStars}>{pkg.stars}</span>
-                  <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
+                <div className={styles.packagePriceContainer}>
+                  <div className={styles.packagePrice}>
+                    <div className={styles.priceRow}>
+                      <span className={styles.oldPrice}>{pkg.oldStars}</span>
+                      <span className={styles.packageStars}>{pkg.stars}</span>
+                      <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
+                    </div>
+                    <div className={styles.savingsBadge}>
+                      💰 Вы экономите {pkg.savings} звезд!
+                    </div>
+                  </div>
                 </div>
                 <button
                   className={`${styles.packageButton} ${isProcessingPayment ? styles.packageButtonDisabled : ''}`}
                   onClick={() => handleTopup(pkg.id)}
                   disabled={isProcessingPayment}
                 >
-                  {isProcessingPayment ? 'Обработка...' : 'Купить'}
+                  {isProcessingPayment ? 'Обработка...' : 'Купить со скидкой'}
                 </button>
               </div>
             ))}
