@@ -73,6 +73,17 @@ export default function Home() {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         const webApp = window.Telegram.WebApp
         
+        // Отправляем данные боту о выборе девочки
+        // Бот получит эти данные и отправит приветствие
+        try {
+          webApp.sendData(JSON.stringify({ 
+            action: 'girl_selected', 
+            girlId: girlId 
+          }))
+        } catch (e) {
+          console.error('Ошибка отправки данных боту:', e)
+        }
+        
         // Открываем чат с ботом
         webApp.openTelegramLink(`https://t.me/${botUsername}`)
         
