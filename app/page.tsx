@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { initTelegramWebApp } from '@/lib/telegram-webapp'
-import { PACKAGES, getPackageUsdPrice, type PackageId } from '@/lib/packages'
+import { PACKAGES, getPackageUsdPrice, getPackageOldUsdPrice, type PackageId } from '@/lib/packages'
 import styles from './page.module.css'
 
 interface Girl {
@@ -45,6 +45,14 @@ export default function Home() {
   const [adminLoading, setAdminLoading] = useState(false)
   const [adminError, setAdminError] = useState<string | null>(null)
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+  const [adminStats, setAdminStats] = useState<{
+    totalPayments: number
+    totalStars: number
+    totalUsd: number
+    totalMessages: number
+    starsPayments: number
+    usdPayments: number
+  } | null>(null)
 
   useEffect(() => {
     // Инициализация Telegram WebApp
@@ -73,10 +81,28 @@ export default function Home() {
         setIsAdmin(data.isAdmin)
         if (data.isAdmin) {
           fetchAdminUsers()
+          fetchAdminStats()
         }
       }
     } catch (error) {
       console.error('Ошибка проверки прав администратора:', error)
+    }
+  }
+
+  const fetchAdminStats = async () => {
+    try {
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch('/api/admin/stats', {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setAdminStats(data)
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки статистики:', error)
     }
   }
 
@@ -298,11 +324,16 @@ export default function Home() {
   const packages = Object.entries(PACKAGES).map(([id, pkg]) => {
     const packageId = Number(id) as PackageId
     const usdPrice = getPackageUsdPrice(packageId)
+    const oldUsdPrice = getPackageOldUsdPrice(packageId)
     return {
       id: packageId,
       messages: pkg.messages,
       stars: pkg.stars,
+      oldStars: pkg.oldStars,
       usdPrice: usdPrice,
+      oldUsdPrice: oldUsdPrice,
+      discount: pkg.discount,
+      savings: pkg.savings,
       name: pkg.name,
     }
   })
@@ -421,21 +452,36 @@ export default function Home() {
                 <div className={styles.packageHeader}>
                   <div className={styles.packageTitleContainer}>
                     <h3 className={styles.packageName}>{pkg.name}</h3>
+                    <div className={styles.discountBadge}>
+                      -{pkg.discount}%
+                    </div>
                   </div>
                   <div className={styles.packageMessages}>{pkg.messages} сообщений</div>
                 </div>
                 <div className={styles.packagePriceContainer}>
                   <div className={styles.packagePrice}>
                     {paymentMethod === 'stars' ? (
-                      <div className={styles.priceRow}>
-                        <span className={styles.packageStars}>{pkg.stars}</span>
-                        <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
-                      </div>
+                      <>
+                        <div className={styles.priceRow}>
+                          <span className={styles.oldPrice}>{pkg.oldStars}</span>
+                          <span className={styles.packageStars}>{pkg.stars}</span>
+                          <span className={styles.packageStarsLabel}>⭐ Telegram Stars</span>
+                        </div>
+                        <div className={styles.savingsBadge}>
+                          💰 Вы экономите {pkg.savings} звезд!
+                        </div>
+                      </>
                     ) : (
-                      <div className={styles.priceRow}>
-                        <span className={styles.packageStars}>${pkg.usdPrice.toFixed(2)}</span>
-                        <span className={styles.packageStarsLabel}>💵 USD</span>
-                      </div>
+                      <>
+                        <div className={styles.priceRow}>
+                          <span className={styles.oldPrice}>${pkg.oldUsdPrice.toFixed(2)}</span>
+                          <span className={styles.packageStars}>${pkg.usdPrice.toFixed(2)}</span>
+                          <span className={styles.packageStarsLabel}>💵 USD</span>
+                        </div>
+                        <div className={styles.savingsBadge}>
+                          💰 Вы экономите ${(pkg.oldUsdPrice - pkg.usdPrice).toFixed(2)}!
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
@@ -444,7 +490,7 @@ export default function Home() {
                   onClick={() => handleTopup(pkg.id)}
                   disabled={isProcessingPayment}
                 >
-                  {isProcessingPayment ? 'Обработка...' : paymentMethod === 'stars' ? 'Купить за звезды' : 'Купить за карту'}
+                  {isProcessingPayment ? 'Обработка...' : 'Купить со скидкой'}
                 </button>
               </div>
             ))}
@@ -473,7 +519,40 @@ export default function Home() {
                   <div className={styles.statValue}>{adminUsers.length}</div>
                   <div className={styles.statLabel}>Пользователей</div>
                 </div>
+                {adminStats && (
+                  <>
+                    <div className={styles.statCard}>
+                      <div className={styles.statValue}>{adminStats.totalPayments}</div>
+                      <div className={styles.statLabel}>Всего платежей</div>
+                    </div>
+                    <div className={styles.statCard}>
+                      <div className={styles.statValue}>{adminStats.totalStars.toLocaleString()}</div>
+                      <div className={styles.statLabel}>⭐ Stars получено</div>
+                    </div>
+                    <div className={styles.statCard}>
+                      <div className={styles.statValue}>${adminStats.totalUsd.toFixed(2)}</div>
+                      <div className={styles.statLabel}>💵 USD получено</div>
+                    </div>
+                  </>
+                )}
               </div>
+              
+              {adminStats && (
+                <div className={styles.paymentInfoCard}>
+                  <h3 className={styles.paymentInfoTitle}>💰 Информация о выводе средств</h3>
+                  <div className={styles.paymentInfoContent}>
+                    <p><strong>⭐ Telegram Stars:</strong> {adminStats.totalStars.toLocaleString()} stars</p>
+                    <p><strong>💵 USD:</strong> ${adminStats.totalUsd.toFixed(2)}</p>
+                    <p className={styles.paymentInfoNote}>
+                      💡 <strong>Важно:</strong> Средства поступают на баланс бота в Telegram.
+                      Для вывода откройте @BotFather → My Bots → выберите бота → Payments
+                    </p>
+                    <p className={styles.paymentInfoNote}>
+                      📖 Подробная инструкция по выводу средств находится в файле PAYMENTS_SETUP.md
+                    </p>
+                  </div>
+                </div>
+              )}
               
               <div className={styles.usersList}>
                 {adminUsers.length === 0 ? (
