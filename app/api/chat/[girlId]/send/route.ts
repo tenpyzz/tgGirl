@@ -147,7 +147,7 @@ export async function POST(
     let completion
     try {
       completion = await openrouter.chat.completions.create({
-        model: 'deepseek/deepseek-v3-0324', // DeepSeek V3 0324 через OpenRouter
+        model: 'deepseek/deepseek-v3', // DeepSeek V3 через OpenRouter
         messages: messages,
         temperature: 0.9, // Больше креативности
         max_tokens: 500,
