@@ -24,7 +24,7 @@ git push origin main
 
 ```
 TELEGRAM_BOT_TOKEN=ваш_токен
-OPENAI_API_KEY=ваш_ключ
+OPENROUTER_API_KEY=ваш_ключ
 WEBHOOK_URL=https://ваш-проект.railway.app/api/webhook
 NODE_ENV=production
 ```

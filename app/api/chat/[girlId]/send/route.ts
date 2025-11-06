@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { openai } from '@/lib/openai'
+import { openrouter } from '@/lib/openrouter'
 import type OpenAI from 'openai'
 
 // Получение Telegram user ID из запроса
@@ -122,7 +122,7 @@ export async function POST(
       take: 20, // Последние 20 сообщений для контекста
     })
 
-    // Формируем сообщения для OpenAI
+    // Формируем сообщения для OpenRouter
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: 'system',
@@ -134,9 +134,9 @@ export async function POST(
       })),
     ]
 
-    // Генерируем ответ от ИИ
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini', // Используем более дешевую модель для экономии
+    // Генерируем ответ от ИИ через OpenRouter
+    const completion = await openrouter.chat.completions.create({
+      model: 'deepseek/deepseek-v3-0324', // DeepSeek V3 0324 через OpenRouter
       messages: messages,
       temperature: 0.9, // Больше креативности
       max_tokens: 500,

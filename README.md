@@ -8,7 +8,7 @@ Telegram Mini App для общения с ИИ-девушками.
 - **TypeScript** - Типизация
 - **PostgreSQL** - База данных
 - **Prisma** - ORM
-- **OpenAI API** - ИИ для генерации ответов
+- **OpenRouter AI** - ИИ для генерации ответов (доступ к различным моделям через единый API)
 - **node-telegram-bot-api** - Telegram Bot API
 
 ## 📦 Установка
@@ -20,7 +20,7 @@ npm install
 
 2. Создайте файл `.env` и заполните переменные окружения:
    - `TELEGRAM_BOT_TOKEN` - получите у [@BotFather](https://t.me/BotFather)
-   - `OPENAI_API_KEY` - получите на [OpenAI Platform](https://platform.openai.com/)
+   - `OPENROUTER_API_KEY` - получите на [OpenRouter](https://openrouter.ai/)
    - `DATABASE_URL` - URL вашей PostgreSQL базы данных
 
 3. Настройте базу данных:

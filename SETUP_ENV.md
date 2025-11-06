@@ -14,8 +14,9 @@ NEXT_PUBLIC_APP_URL=https://web-production-877f.up.railway.app
 # Webhook URL для production
 WEBHOOK_URL=https://web-production-877f.up.railway.app/api/webhook
 
-# OpenAI API Key (добавьте свой ключ)
-OPENAI_API_KEY=your_openai_api_key_here
+# OpenRouter API Key (добавьте свой ключ)
+# Получите на https://openrouter.ai/
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 
 # Database URL (для локальной разработки используйте PostgreSQL)
 DATABASE_URL=your_local_database_url_here
@@ -36,7 +37,7 @@ WEBHOOK_URL=https://web-production-877f.up.railway.app/api/webhook
 ### Дополнительные переменные:
 
 ```
-OPENAI_API_KEY=your_openai_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
 NODE_ENV=production
 ```
 

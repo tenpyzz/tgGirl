@@ -24,13 +24,13 @@ cp .env.example .env
 TELEGRAM_BOT_TOKEN=ваш_токен_бота
 ```
 
-### OpenAI API Key
-- Зарегистрируйтесь на [OpenAI Platform](https://platform.openai.com/)
+### OpenRouter API Key
+- Зарегистрируйтесь на [OpenRouter](https://openrouter.ai/)
 - Перейдите в раздел API Keys
 - Создайте новый API ключ
 - Вставьте в `.env`:
 ```
-OPENAI_API_KEY=ваш_openai_ключ
+OPENROUTER_API_KEY=ваш_openrouter_ключ
 ```
 
 ### PostgreSQL Database URL
@@ -132,7 +132,7 @@ ngrok http 3000
 
 2. **Telegram User ID**: В development режиме используется дефолтный user ID (123456789). В production это будет приходить автоматически из Telegram WebApp.
 
-3. **OpenAI API**: Используется модель `gpt-4o-mini` для экономии. Можете изменить на другую модель в `app/api/chat/[girlId]/send/route.ts`.
+3. **OpenRouter API**: Используется модель `deepseek/deepseek-v3-0324` (DeepSeek V3 0324) через OpenRouter. Можете изменить на другую модель в `app/api/chat/[girlId]/send/route.ts`. Список доступных моделей: https://openrouter.ai/models
 
 4. **Системный промпт**: Настройте системный промпт для девушки в `scripts/seed.ts` для изменения поведения ИИ.
 
@@ -141,7 +141,7 @@ ngrok http 3000
 ## Структура проекта
 
 - `app/` - Next.js приложение (страницы и API)
-- `lib/` - Утилиты (Prisma, OpenAI, Telegram)
+- `lib/` - Утилиты (Prisma, OpenRouter, Telegram)
 - `prisma/` - Схема базы данных
 - `scripts/` - Скрипты для заполнения базы данных
 
@@ -160,5 +160,5 @@ ngrok http 3000
 1. Проверьте, что все переменные окружения заполнены
 2. Убедитесь, что база данных настроена и доступна
 3. Проверьте логи в консоли
-4. Убедитесь, что Telegram Bot Token и OpenAI API Key корректны
+4. Убедитесь, что Telegram Bot Token и OpenRouter API Key корректны
 

@@ -63,7 +63,7 @@ WEBHOOK_URL=https://web-production-877f.up.railway.app/api/webhook
 
 **Дополнительные:**
 ```
-OPENAI_API_KEY=ваш_ключ
+OPENROUTER_API_KEY=ваш_ключ
 NODE_ENV=production
 ```
 
