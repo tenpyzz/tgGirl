@@ -488,6 +488,60 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     return
   }
 
+  // Проверяем, есть ли информация о платеже (обрабатываем в первую очередь)
+  if (msg.successful_payment) {
+    try {
+      console.log('Получен successful_payment:', msg.successful_payment)
+
+      // Парсим payload для получения информации о пакете
+      let packageId: number | null = null
+      try {
+        const payload = JSON.parse(msg.successful_payment.invoice_payload || '{}')
+        packageId = payload.packageId
+      } catch (e) {
+        console.error('Ошибка парсинга payload из платежа:', e)
+        return
+      }
+
+      // Проверяем, что пакет существует
+      if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+        console.error('Неверный packageId из платежа:', packageId)
+        return
+      }
+
+      const pkg = PACKAGES[packageId as keyof typeof PACKAGES]
+
+      // Получаем или создаем пользователя
+      const user = await getOrCreateUser(
+        telegramUserId,
+        from.username,
+        from.first_name,
+        from.last_name
+      )
+
+      // Обновляем баланс
+      const updatedUser = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          messageBalance: {
+            increment: pkg.messages,
+          },
+        } as any,
+      })
+
+      console.log(`Баланс пользователя ${telegramUserId} пополнен на ${pkg.messages} сообщений. Новый баланс: ${(updatedUser as any).messageBalance}`)
+
+      // Отправляем подтверждение пользователю
+      await bot.sendMessage(
+        chatId,
+        `✅ Баланс успешно пополнен!\n\n💬 Добавлено сообщений: ${pkg.messages}\n💬 Текущий баланс: ${(updatedUser as any).messageBalance}`
+      )
+    } catch (error) {
+      console.error('Ошибка обработки successful_payment:', error)
+    }
+    return // Не обрабатываем это сообщение дальше
+  }
+
   // Проверяем, есть ли данные от WebApp в сообщении
   if (msg.web_app_data?.data) {
     try {
@@ -702,13 +756,8 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     // Генерируем ответ от девочки
     const response = await generateGirlResponse(user.id, user.selectedGirlId, msg.text)
 
-    // Отправляем ответ с информацией об оставшемся балансе
-    const remainingMessages = (updatedUser as any).messageBalance ?? 0
-    const balanceInfo = remainingMessages > 0 
-      ? `\n\n💬 Осталось сообщений: ${remainingMessages}`
-      : `\n\n💬 Осталось сообщений: 0\n\nДля продолжения общения необходимо пополнить баланс.`
-    
-    await bot.sendMessage(chatId, response + balanceInfo)
+    // Отправляем ответ
+    await bot.sendMessage(chatId, response)
   } catch (error) {
     console.error('Ошибка при обработке сообщения:', error)
     await bot.sendMessage(chatId, 'Извините, произошла ошибка. Попробуйте позже.')
@@ -785,6 +834,55 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
     }
   } catch (error) {
     console.error('Ошибка обработки callback query:', error)
+  }
+})
+
+
+// Пакеты пополнения
+const PACKAGES = {
+  1: { messages: 200, stars: 299, name: 'Базовый' },
+  2: { messages: 1000, stars: 999, name: 'Стандартный' },
+  3: { messages: 3000, stars: 2499, name: 'Премиум' },
+} as const
+
+// Обработчик pre_checkout_query (перед оплатой)
+bot.on('pre_checkout_query', async (query: TelegramBot.PreCheckoutQuery) => {
+  try {
+    console.log('Получен pre_checkout_query:', query)
+    
+    // Парсим payload для получения информации о пакете
+    let packageId: number | null = null
+    try {
+      const payload = JSON.parse(query.invoice_payload || '{}')
+      packageId = payload.packageId
+    } catch (e) {
+      console.error('Ошибка парсинга payload:', e)
+      await bot.answerPreCheckoutQuery(query.id, false, {
+        error_message: 'Ошибка обработки платежа',
+      })
+      return
+    }
+
+    // Проверяем, что пакет существует
+    if (!packageId || !PACKAGES[packageId as keyof typeof PACKAGES]) {
+      await bot.answerPreCheckoutQuery(query.id, false, {
+        error_message: 'Неверный пакет пополнения',
+      })
+      return
+    }
+
+    // Подтверждаем платеж
+    await bot.answerPreCheckoutQuery(query.id, true)
+    console.log('Pre-checkout query подтвержден')
+  } catch (error) {
+    console.error('Ошибка обработки pre_checkout_query:', error)
+    try {
+      await bot.answerPreCheckoutQuery(query.id, false, {
+        error_message: 'Ошибка обработки платежа',
+      })
+    } catch (e) {
+      console.error('Ошибка отправки ответа на pre_checkout_query:', e)
+    }
   }
 })
 
