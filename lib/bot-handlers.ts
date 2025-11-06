@@ -44,14 +44,19 @@ async function getOrCreateUser(telegramId: number, username?: string, firstName?
 
 // Функция для генерации первого сообщения от девочки в формате ролевой игры (действие в звездочках + диалог)
 async function generateFirstMessage(userId: number, girlId: number): Promise<string> {
+  console.log(`[generateFirstMessage] Начало генерации для userId: ${userId}, girlId: ${girlId}`)
+  
   // Получаем девушку и её системный промпт
   const girl = await prisma.girl.findUnique({
     where: { id: girlId },
   })
 
   if (!girl) {
+    console.error(`[generateFirstMessage] Девушка не найдена для girlId: ${girlId}`)
     throw new Error('Девушка не найдена')
   }
+  
+  console.log(`[generateFirstMessage] Девушка найдена: ${girl.name}`)
 
   // Создаем специальный промпт для первого сообщения
   const firstMessagePrompt = `Ты - ${girl.name}. Это ролевая игра, где ты и пользователь находитесь рядом друг с другом в реальном времени.
@@ -84,6 +89,7 @@ async function generateFirstMessage(userId: number, girlId: number): Promise<str
 ${girl.systemPrompt}`
 
   // Генерируем первое сообщение через OpenRouter
+  console.log('[generateFirstMessage] Отправка запроса к OpenRouter API...')
   const completion = await openrouter.chat.completions.create({
     model: 'deepseek/deepseek-chat',
     messages: [
@@ -100,13 +106,16 @@ ${girl.systemPrompt}`
     max_tokens: 400, // Увеличено для более длинных и естественных сообщений
   })
 
+  console.log('[generateFirstMessage] Ответ от OpenRouter получен')
   const responseContent = completion.choices?.[0]?.message?.content
 
   if (!responseContent || typeof responseContent !== 'string') {
+    console.error('[generateFirstMessage] Неожиданный формат ответа от OpenRouter:', completion)
     throw new Error('Неожиданный формат ответа от OpenRouter API')
   }
 
   const firstMessage = responseContent.trim()
+  console.log(`[generateFirstMessage] Сообщение сгенерировано (длина: ${firstMessage.length} символов)`)
 
   // Создаем или получаем чат
   const chat = await prisma.chat.upsert({
@@ -131,6 +140,7 @@ ${girl.systemPrompt}`
   })
 
   // Сохраняем первое сообщение в базу
+  console.log(`[generateFirstMessage] Сохранение сообщения в базу данных, chatId: ${chat.id}`)
   await prisma.message.create({
     data: {
       chatId: chat.id,
@@ -138,7 +148,8 @@ ${girl.systemPrompt}`
       content: firstMessage,
     },
   })
-
+  
+  console.log('[generateFirstMessage] Сообщение успешно сохранено в базу')
   return firstMessage
 }
 
