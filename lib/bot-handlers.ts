@@ -222,7 +222,7 @@ bot.on('message', async (msg: TelegramBot.Message) => {
       const data = JSON.parse(msg.web_app_data.data)
       if (data.action === 'girl_selected') {
         // Получаем пользователя (обновляем данные, чтобы убедиться, что выбор актуален)
-        let user = await getOrCreateUser(
+        const user = await getOrCreateUser(
           telegramUserId,
           from.username,
           from.first_name,
@@ -230,23 +230,27 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         )
         
         // Если в данных есть girlId, обновляем выбор девочки
+        let updatedUser = user
         if (data.girlId && typeof data.girlId === 'number') {
-          user = await prisma.user.update({
+          updatedUser = await prisma.user.update({
             where: { id: user.id },
             data: { selectedGirlId: data.girlId },
             include: { selectedGirl: true },
           })
         } else {
           // Если girlId нет в данных, получаем пользователя с актуальными данными
-          user = await prisma.user.findUnique({
+          const freshUser = await prisma.user.findUnique({
             where: { id: user.id },
             include: { selectedGirl: true },
           })
+          if (freshUser) {
+            updatedUser = freshUser
+          }
         }
         
         // Проверяем, выбрана ли девочка
-        if (user && user.selectedGirlId && user.selectedGirl) {
-          const girl = user.selectedGirl
+        if (updatedUser && updatedUser.selectedGirlId && updatedUser.selectedGirl) {
+          const girl = updatedUser.selectedGirl
           
           // Генерируем приветственное сообщение от девочки через ИИ
           try {
@@ -254,13 +258,13 @@ bot.on('message', async (msg: TelegramBot.Message) => {
             const chat = await prisma.chat.upsert({
               where: {
                 userId_girlId: {
-                  userId: user.id,
-                  girlId: user.selectedGirlId,
+                  userId: updatedUser.id,
+                  girlId: updatedUser.selectedGirlId,
                 },
               },
               create: {
-                userId: user.id,
-                girlId: user.selectedGirlId,
+                userId: updatedUser.id,
+                girlId: updatedUser.selectedGirlId,
               },
               update: {},
             })
@@ -317,11 +321,13 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           } catch (aiError) {
             console.error('Ошибка генерации приветствия:', aiError)
             // Если ошибка, отправляем стандартное приветствие
-            const girl = user.selectedGirl
-            await bot.sendMessage(
-              chatId,
-              `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
-            )
+            const girl = updatedUser.selectedGirl
+            if (girl) {
+              await bot.sendMessage(
+                chatId,
+                `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+              )
+            }
           }
           
           return // Не обрабатываем это сообщение дальше
