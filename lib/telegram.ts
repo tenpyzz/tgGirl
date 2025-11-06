@@ -32,6 +32,7 @@ function getBot(): TelegramBot {
         // Динамический импорт обработчиков
         require('./bot-handlers')
         handlersImported = true
+        console.log('Обработчики бота загружены')
       } catch (error) {
         console.error('Ошибка импорта обработчиков бота:', error)
       }
@@ -54,6 +55,9 @@ function getBot(): TelegramBot {
       }
       
       botInstance.setWebHook(webhookUrl)
+        .then(() => {
+          console.log('Webhook установлен:', webhookUrl)
+        })
         .catch((error: unknown) => {
           console.error('Ошибка установки webhook:', error)
         })

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { bot } from '@/lib/telegram'
+import '@/lib/init-bot'
 
 // Загружаем обработчики при первом запросе
 try {

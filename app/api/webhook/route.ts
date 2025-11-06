@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { bot } from '@/lib/telegram'
+import '@/lib/init-bot'
 
 // Импортируем обработчики только при первом запросе (lazy import)
 let handlersImported = false
@@ -22,6 +23,9 @@ export async function POST(request: Request) {
   try {
     // Убеждаемся, что обработчики импортированы
     ensureHandlers()
+    
+    // Инициализируем бота (чтобы убедиться, что он создан)
+    bot.getMe().catch(() => {})
     
     const body = await request.json()
     
