@@ -11,7 +11,25 @@ interface Girl {
   photoUrl: string | null
 }
 
-type Tab = 'main' | 'topup'
+type Tab = 'main' | 'topup' | 'admin'
+
+interface User {
+  id: number
+  telegramId: string
+  username: string | null
+  firstName: string | null
+  lastName: string | null
+  fullName: string
+  messageBalance: number
+  selectedGirl: {
+    id: number
+    name: string
+  } | null
+  chatsCount: number
+  paymentsCount: number
+  createdAt: string
+  updatedAt: string
+}
 
 export default function Home() {
   const [girl, setGirl] = useState<Girl | null>(null)
@@ -20,6 +38,11 @@ export default function Home() {
   const [balance, setBalance] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('main')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [adminUsers, setAdminUsers] = useState<User[]>([])
+  const [adminLoading, setAdminLoading] = useState(false)
+  const [adminError, setAdminError] = useState<string | null>(null)
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
 
   useEffect(() => {
     // Инициализация Telegram WebApp
@@ -30,7 +53,62 @@ export default function Home() {
     
     // Загрузка баланса
     fetchBalance()
+
+    // Проверка прав администратора
+    checkAdmin()
   }, [])
+
+  const checkAdmin = async () => {
+    try {
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch('/api/admin/check', {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setIsAdmin(data.isAdmin)
+        if (data.isAdmin) {
+          fetchAdminUsers()
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка проверки прав администратора:', error)
+    }
+  }
+
+  const fetchAdminUsers = async () => {
+    try {
+      setAdminLoading(true)
+      setAdminError(null)
+      
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch('/api/admin/users?page=1&limit=50', {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          setAdminError('Доступ запрещен')
+          setIsAdmin(false)
+        } else {
+          setAdminError('Ошибка загрузки пользователей')
+        }
+        return
+      }
+
+      const data = await response.json()
+      setAdminUsers(data.users)
+    } catch (err) {
+      console.error('Ошибка загрузки пользователей:', err)
+      setAdminError('Ошибка загрузки пользователей')
+    } finally {
+      setAdminLoading(false)
+    }
+  }
 
   const fetchBalance = async () => {
     try {
@@ -260,6 +338,19 @@ export default function Home() {
         >
           Пополнение
         </button>
+        {isAdmin && (
+          <button
+            className={`${styles.tab} ${activeTab === 'admin' ? styles.tabActive : ''}`}
+            onClick={() => {
+              setActiveTab('admin')
+              if (adminUsers.length === 0) {
+                fetchAdminUsers()
+              }
+            }}
+          >
+            Админ
+          </button>
+        )}
       </div>
 
       {/* Главная вкладка */}
@@ -359,6 +450,245 @@ export default function Home() {
           </div>
         </>
       )}
+
+      {/* Вкладка админ-панели */}
+      {activeTab === 'admin' && isAdmin && (
+        <>
+          <h1 className={styles.title}>Админ-панель</h1>
+          
+          {adminLoading ? (
+            <div className={styles.loading}>Загрузка...</div>
+          ) : adminError ? (
+            <div className={styles.error}>{adminError}</div>
+          ) : selectedUserId ? (
+            <AdminUserDetail 
+              userId={selectedUserId} 
+              onBack={() => setSelectedUserId(null)}
+            />
+          ) : (
+            <div className={styles.adminContent}>
+              <div className={styles.adminStats}>
+                <div className={styles.statCard}>
+                  <div className={styles.statValue}>{adminUsers.length}</div>
+                  <div className={styles.statLabel}>Пользователей</div>
+                </div>
+              </div>
+              
+              <div className={styles.usersList}>
+                {adminUsers.length === 0 ? (
+                  <div className={styles.empty}>Пользователи не найдены</div>
+                ) : (
+                  adminUsers.map((user) => (
+                    <div
+                      key={user.id}
+                      className={styles.userCard}
+                      onClick={() => setSelectedUserId(user.id)}
+                    >
+                      <div className={styles.userHeader}>
+                        <div className={styles.userName}>
+                          {user.fullName}
+                          {user.username && (
+                            <span className={styles.username}>@{user.username}</span>
+                          )}
+                        </div>
+                        <div className={styles.userId}>ID: {user.telegramId}</div>
+                      </div>
+                      
+                      <div className={styles.userInfo}>
+                        <div className={styles.infoRow}>
+                          <span className={styles.infoLabel}>Баланс:</span>
+                          <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
+                        </div>
+                        
+                        {user.selectedGirl && (
+                          <div className={styles.infoRow}>
+                            <span className={styles.infoLabel}>Девушка:</span>
+                            <span className={styles.infoValue}>{user.selectedGirl.name}</span>
+                          </div>
+                        )}
+                        
+                        <div className={styles.infoRow}>
+                          <span className={styles.infoLabel}>Чатов:</span>
+                          <span className={styles.infoValue}>{user.chatsCount}</span>
+                        </div>
+                        
+                        <div className={styles.infoRow}>
+                          <span className={styles.infoLabel}>Платежей:</span>
+                          <span className={styles.infoValue}>{user.paymentsCount}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// Компонент детальной информации о пользователе
+function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => void }) {
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'info' | 'chats' | 'payments'>('info')
+
+  useEffect(() => {
+    fetchUser()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId])
+
+  const fetchUser = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+
+      if (!response.ok) {
+        setError('Ошибка загрузки данных пользователя')
+        return
+      }
+
+      const data = await response.json()
+      setUser(data)
+    } catch (err) {
+      console.error('Ошибка загрузки данных пользователя:', err)
+      setError('Ошибка загрузки данных пользователя')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return <div className={styles.loading}>Загрузка...</div>
+  }
+
+  if (error || !user) {
+    return (
+      <>
+        <div className={styles.error}>{error || 'Пользователь не найден'}</div>
+        <button className={styles.backButton} onClick={onBack}>Назад</button>
+      </>
+    )
+  }
+
+  return (
+    <div className={styles.userDetail}>
+      <button className={styles.backButton} onClick={onBack}>← Назад</button>
+      
+      <div className={styles.userDetailHeader}>
+        <h2>{user.fullName}</h2>
+        {user.username && <div className={styles.username}>@{user.username}</div>}
+        <div className={styles.userId}>Telegram ID: {user.telegramId}</div>
+      </div>
+
+      <div className={styles.userDetailTabs}>
+        <button
+          className={`${styles.detailTab} ${activeTab === 'info' ? styles.detailTabActive : ''}`}
+          onClick={() => setActiveTab('info')}
+        >
+          Инфо
+        </button>
+        <button
+          className={`${styles.detailTab} ${activeTab === 'chats' ? styles.detailTabActive : ''}`}
+          onClick={() => setActiveTab('chats')}
+        >
+          Диалоги ({user.chats.length})
+        </button>
+        <button
+          className={`${styles.detailTab} ${activeTab === 'payments' ? styles.detailTabActive : ''}`}
+          onClick={() => setActiveTab('payments')}
+        >
+          Платежи ({user.payments.length})
+        </button>
+      </div>
+
+      <div className={styles.userDetailContent}>
+        {activeTab === 'info' && (
+          <div className={styles.userDetailInfo}>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Баланс:</span>
+              <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
+            </div>
+            {user.selectedGirl && (
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Девушка:</span>
+                <span className={styles.infoValue}>{user.selectedGirl.name}</span>
+              </div>
+            )}
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Чатов:</span>
+              <span className={styles.infoValue}>{user.stats.totalChats}</span>
+            </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Сообщений:</span>
+              <span className={styles.infoValue}>{user.stats.totalMessages}</span>
+            </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Платежей:</span>
+              <span className={styles.infoValue}>{user.stats.totalPayments}</span>
+            </div>
+            <div className={styles.infoItem}>
+              <span className={styles.infoLabel}>Звезд потрачено:</span>
+              <span className={styles.infoValue}>{user.stats.totalStarsSpent}</span>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'chats' && (
+          <div className={styles.userDetailChats}>
+            {user.chats.length === 0 ? (
+              <div className={styles.empty}>Диалогов нет</div>
+            ) : (
+              user.chats.map((chat: any) => (
+                <div key={chat.id} className={styles.chatCard}>
+                  <h3>Диалог с {chat.girl.name}</h3>
+                  <div className={styles.chatMessages}>
+                    {chat.messages.slice(-10).map((msg: any) => (
+                      <div key={msg.id} className={styles.message}>
+                        <div className={styles.messageRole}>
+                          {msg.role === 'user' ? '👤' : '🤖'}
+                        </div>
+                        <div className={styles.messageContent}>{msg.content}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className={styles.userDetailPayments}>
+            {user.payments.length === 0 ? (
+              <div className={styles.empty}>Платежей нет</div>
+            ) : (
+              user.payments.map((payment: any) => (
+                <div key={payment.id} className={styles.paymentCard}>
+                  <div className={styles.paymentHeader}>
+                    <h3>{payment.packageName}</h3>
+                    <div>{new Date(payment.createdAt).toLocaleDateString('ru-RU')}</div>
+                  </div>
+                  <div className={styles.paymentInfo}>
+                    <div>Сообщений: {payment.messages}</div>
+                    <div>Звезд: {payment.stars} ⭐</div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
