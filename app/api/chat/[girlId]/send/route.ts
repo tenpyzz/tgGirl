@@ -147,17 +147,30 @@ export async function POST(
     let completion
     try {
       completion = await openrouter.chat.completions.create({
-        model: 'deepseek/deepseek-chat-v3-0324', // DeepSeek Chat V3 0324 через OpenRouter
+        model: 'deepseek/deepseek-chat', // DeepSeek Chat через OpenRouter (проверенная модель)
         messages: messages,
         temperature: 0.9, // Больше креативности
         max_tokens: 500,
       })
+      
+      // Логируем ответ для отладки
+      console.log('OpenRouter completion:', JSON.stringify(completion, null, 2))
     } catch (apiError) {
       console.error('Ошибка OpenRouter API:', apiError)
       throw new Error(`Ошибка OpenRouter API: ${apiError instanceof Error ? apiError.message : 'Неизвестная ошибка'}`)
     }
 
-    const aiResponse = completion.choices[0]?.message?.content || 'Извините, я не могу ответить сейчас.'
+    // Проверяем структуру ответа
+    const responseContent = completion.choices?.[0]?.message?.content
+    console.log('Response content:', responseContent)
+    console.log('Response type:', typeof responseContent)
+    
+    if (!responseContent || typeof responseContent !== 'string') {
+      console.error('Неожиданный формат ответа:', completion)
+      throw new Error('Неожиданный формат ответа от OpenRouter API')
+    }
+    
+    const aiResponse = responseContent.trim() || 'Извините, я не могу ответить сейчас.'
 
     // Сохраняем ответ ИИ
     const assistantMessage = await prisma.message.create({
