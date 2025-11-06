@@ -400,9 +400,9 @@ export default function Home() {
           )}
           
           <div 
-            className={`${styles.girlCard} ${isSelecting ? styles.disabled : ''}`}
+            className={styles.girlCard}
             onClick={() => !isSelecting && handleGirlClick(girl.id)}
-            style={isSelecting ? { opacity: 0.6, pointerEvents: 'none' } : {}}
+            style={isSelecting ? { opacity: 0.6, pointerEvents: 'none', cursor: 'not-allowed' } : {}}
           >
             <div className={styles.girlPhoto}>
               {girl.photoUrl ? (

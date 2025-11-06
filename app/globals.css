@@ -25,9 +25,3 @@ a {
   text-decoration: none;
 }
 
-/* Telegram Mini App стили */
-.tg-viewport {
-  min-height: 100vh;
-  padding: 16px;
-}
-
