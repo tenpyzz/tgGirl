@@ -114,49 +114,6 @@ declare global {
 }
 
 /**
- * Получает Telegram User ID из WebApp initData
- */
-export function getTelegramUserId(): number | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const webApp = window.Telegram?.WebApp
-  if (!webApp) {
-    return null
-  }
-
-  return webApp.initDataUnsafe.user?.id || null
-}
-
-/**
- * Получает Telegram User объект из WebApp
- */
-export function getTelegramUser(): TelegramUser | null {
-  if (typeof window === 'undefined') {
-    return null
-  }
-
-  const webApp = window.Telegram?.WebApp
-  if (!webApp) {
-    return null
-  }
-
-  return webApp.initDataUnsafe.user || null
-}
-
-/**
- * Проверяет, запущено ли приложение в Telegram
- */
-export function isTelegramWebApp(): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  return !!window.Telegram?.WebApp
-}
-
-/**
  * Инициализирует Telegram WebApp
  */
 export function initTelegramWebApp(): void {

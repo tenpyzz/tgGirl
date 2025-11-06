@@ -4,8 +4,7 @@ import { prisma } from './prisma'
 import { openrouter } from './openrouter'
 import type OpenAI from 'openai'
 
-// Убеждаемся, что бот инициализирован перед регистрацией обработчиков
-console.log('🔄 Начинаем регистрацию обработчиков бота...')
+// Регистрация обработчиков бота
 
 // URL вашего Mini App
 const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'
@@ -62,7 +61,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
   // Сохраняем сообщение пользователя
   const userMessageContent = userMessage.trim()
-  const savedMessage = await prisma.message.create({
+  await prisma.message.create({
     data: {
       chatId: chat.id,
       role: 'user',
@@ -70,48 +69,15 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     },
   })
 
-  console.log('💬 Сообщение пользователя сохранено:', userMessageContent)
-  console.log('💾 ID сохраненного сообщения:', savedMessage.id)
-
-  // Получаем ВСЕ сообщения для контекста (без ограничения, чтобы убедиться, что новое сообщение попало)
-  const allMessages = await prisma.message.findMany({
+  // Получаем историю сообщений для контекста (последние 20)
+  const chatHistory = await prisma.message.findMany({
     where: {
       chatId: chat.id,
     },
     orderBy: {
       createdAt: 'asc',
     },
-  })
-
-  // Берем последние 20 сообщений (включая только что сохраненное)
-  let chatHistory = allMessages.slice(-20)
-
-  console.log('📜 Всего сообщений в чате:', allMessages.length)
-  console.log('📜 История сообщений (последние 20):', chatHistory.length, 'сообщений')
-  
-  // Проверяем, что последнее сообщение пользователя точно в истории
-  const lastUserMessage = chatHistory[chatHistory.length - 1]
-  if (lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.content === userMessageContent) {
-    console.log('✅ Последнее сообщение пользователя найдено в истории!')
-  } else {
-    console.error('❌ ОШИБКА: Последнее сообщение пользователя НЕ найдено в истории!')
-    console.error('   Ожидалось:', userMessageContent)
-    console.error('   Найдено:', lastUserMessage?.content)
-    console.error('   ⚠️ Добавляем сообщение вручную в историю!')
-    
-    // Добавляем сообщение вручную, если его нет в истории
-    // Проверяем, есть ли оно вообще в истории
-    const messageInHistory = chatHistory.find(m => m.id === savedMessage.id)
-    if (!messageInHistory) {
-      // Если сообщения нет в истории, добавляем его вручную
-      chatHistory = [...chatHistory, savedMessage].slice(-20)
-      console.log('✅ Сообщение добавлено в историю вручную!')
-    }
-  }
-
-  chatHistory.forEach((msg: { role: string; content: string }, idx: number) => {
-    const isLast = idx === chatHistory.length - 1
-    console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...${isLast ? ' ⬅ ПОСЛЕДНЕЕ' : ''}`)
+    take: 20,
   })
 
   // Получаем девушку и её системный промпт
@@ -138,26 +104,10 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 ${girl.systemPrompt}`
 
   // Формируем массив сообщений для ИИ
-  const historyMessages = chatHistory.map((message: { role: string; content: string }) => {
-    // Убеждаемся, что роль правильная
-    const role = message.role === 'user' ? 'user' : 'assistant'
-    return {
-      role: role as 'user' | 'assistant',
-      content: message.content,
-    }
-  })
-
-  // Проверяем, что последнее сообщение пользователя точно в истории
-  const lastHistoryMessage = historyMessages[historyMessages.length - 1]
-  if (!lastHistoryMessage || lastHistoryMessage.role !== 'user' || lastHistoryMessage.content !== userMessageContent) {
-    console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Последнее сообщение пользователя НЕ в истории!')
-    console.error('   Добавляем сообщение вручную в массив для ИИ!')
-    // Добавляем сообщение пользователя вручную
-    historyMessages.push({
-      role: 'user',
-      content: userMessageContent,
-    })
-  }
+  const historyMessages = chatHistory.map((message: { role: string; content: string }) => ({
+    role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: message.content,
+  }))
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
@@ -166,29 +116,6 @@ ${girl.systemPrompt}`
     },
     ...historyMessages,
   ]
-
-  console.log('📤 Отправляем в ИИ:', messages.length, 'сообщений')
-  console.log('📝 Последнее сообщение пользователя:', userMessageContent)
-  
-  // Проверяем, что последнее сообщение пользователя точно в массиве для ИИ
-  const lastUserMessageInArray = messages.filter(m => m.role === 'user').pop()
-  if (lastUserMessageInArray && lastUserMessageInArray.content === userMessageContent) {
-    console.log('✅ Последнее сообщение пользователя найдено в массиве для ИИ!')
-  } else {
-    console.error('❌ ОШИБКА: Последнее сообщение пользователя НЕ найдено в массиве для ИИ!')
-    console.error('   Ожидалось:', userMessageContent)
-    console.error('   Найдено в массиве:', lastUserMessageInArray?.content)
-  }
-  
-  console.log('📋 Все сообщения для ИИ:')
-  messages.forEach((msg, idx) => {
-    if (msg.role === 'system') {
-      console.log(`  ${idx + 1}. [SYSTEM]: ${(msg.content as string).substring(0, 100)}...`)
-    } else {
-      const isLastUserMessage = msg.role === 'user' && msg.content === userMessageContent
-      console.log(`  ${idx + 1}. [${msg.role}]: ${(msg.content as string)}${isLastUserMessage ? ' ⬅ ПОСЛЕДНЕЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ' : ''}`)
-    }
-  })
 
   // Генерируем ответ от ИИ через OpenRouter
   // Снижаем температуру для более точных ответов
@@ -207,8 +134,6 @@ ${girl.systemPrompt}`
 
   const aiResponse = responseContent.trim() || 'Извините, я не могу ответить сейчас.'
 
-  console.log('🤖 Ответ ИИ:', aiResponse.substring(0, 100) + '...')
-
   // Сохраняем ответ ИИ
   await prisma.message.create({
     data: {
@@ -223,34 +148,23 @@ ${girl.systemPrompt}`
 
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
-  console.log('🔵 Обработчик /start вызван!', { chatId: msg.chat.id, userId: msg.from?.id })
-  
   const chatId = msg.chat.id
   const from = msg.from
   const telegramUserId = from?.id
 
   if (!telegramUserId || !from) {
-    console.error('❌ Не удалось определить пользователя')
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
 
   try {
-    console.log('📝 Получаем или создаем пользователя:', telegramUserId)
-    
-    // Получаем или создаем пользователя
-    const user = await getOrCreateUser(
+    await getOrCreateUser(
       telegramUserId,
       from.username,
       from.first_name,
       from.last_name
     )
 
-    console.log('✅ Пользователь получен/создан:', user.id)
-
-    // Всегда показываем приветствие и предлагаем открыть Mini App
-    console.log('📤 Отправляем приветственное сообщение...')
-    
     await bot.sendMessage(
       chatId,
       'Добро пожаловать! 👋\n\nЭто бот для общения с ИИ-девушками. Чтобы начать общение, пожалуйста, откройте мини-приложение и выберите девушку',
@@ -267,10 +181,8 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
         }
       }
     )
-    
-    console.log('✅ Приветственное сообщение отправлено')
   } catch (error) {
-    console.error('❌ Ошибка в обработчике /start:', error)
+    console.error('Ошибка в обработчике /start:', error)
     await bot.sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.')
   }
 })
@@ -291,19 +203,11 @@ bot.onText(/\/help/, async (msg: TelegramBot.Message) => {
 
 // Обработчик всех сообщений (кроме команд)
 bot.on('message', async (msg: TelegramBot.Message) => {
-  console.log('🔵 Обработчик message вызван!', { 
-    chatId: msg.chat.id, 
-    userId: msg.from?.id,
-    text: msg.text,
-    hasWebAppData: !!msg.web_app_data
-  })
-  
   const chatId = msg.chat.id
   const from = msg.from
   const telegramUserId = from?.id
 
   if (!telegramUserId || !from) {
-    console.error('❌ Не удалось определить пользователя в обработчике message')
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
@@ -549,23 +453,4 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
 bot.on('polling_error', (error: Error) => {
   console.error('Ошибка polling:', error)
 })
-
-console.log('✅ Telegram бот инициализирован')
-console.log('📋 Зарегистрированные обработчики:')
-console.log('  - /start команда')
-console.log('  - /help команда')
-console.log('  - Все сообщения (message event)')
-console.log('  - Callback queries')
-console.log('  - Polling errors')
-
-// Проверяем, что бот доступен
-try {
-  bot.getMe().then((info) => {
-    console.log('✅ Бот доступен:', info.username, info.id)
-  }).catch((error) => {
-    console.error('❌ Ошибка получения информации о боте:', error)
-  })
-} catch (error) {
-  console.error('❌ Ошибка при проверке бота:', error)
-}
 

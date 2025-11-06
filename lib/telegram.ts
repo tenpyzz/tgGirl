@@ -32,9 +32,8 @@ function getBot(): TelegramBot {
         // Динамический импорт обработчиков
         require('./bot-handlers')
         handlersImported = true
-        console.log('✅ Обработчики бота загружены')
       } catch (error) {
-        console.error('❌ Ошибка импорта обработчиков бота:', error)
+        console.error('Ошибка импорта обработчиков бота:', error)
       }
     }
     
@@ -43,13 +42,9 @@ function getBot(): TelegramBot {
       // Убеждаемся, что URL правильный
       let webhookUrl = process.env.WEBHOOK_URL
       
-      // Если URL не содержит /api/, добавляем его
-      if (!webhookUrl.includes('/api/')) {
-        // Проверяем, есть ли /bot/webhook в URL
-        if (webhookUrl.includes('/bot/webhook')) {
-          // Заменяем /bot/webhook на /api/bot/webhook
-          webhookUrl = webhookUrl.replace('/bot/webhook', '/api/bot/webhook')
-        } else if (webhookUrl.endsWith('/webhook')) {
+      // Если URL не содержит /api/webhook, добавляем его
+      if (!webhookUrl.includes('/api/webhook')) {
+        if (webhookUrl.endsWith('/webhook')) {
           // Если просто /webhook, заменяем на /api/webhook
           webhookUrl = webhookUrl.replace('/webhook', '/api/webhook')
         } else {
@@ -58,14 +53,9 @@ function getBot(): TelegramBot {
         }
       }
       
-      console.log('🔧 Устанавливаем webhook на:', webhookUrl)
-      
       botInstance.setWebHook(webhookUrl)
-        .then(() => {
-          console.log('✅ Webhook установлен:', webhookUrl)
-        })
         .catch((error: unknown) => {
-          console.error('❌ Ошибка установки webhook:', error)
+          console.error('Ошибка установки webhook:', error)
         })
     }
   }

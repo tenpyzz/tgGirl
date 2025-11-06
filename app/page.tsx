@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { initTelegramWebApp } from '@/lib/telegram-webapp'
 import styles from './page.module.css'
 
@@ -13,7 +12,6 @@ interface Girl {
 }
 
 export default function Home() {
-  const router = useRouter()
   const [girl, setGirl] = useState<Girl | null>(null)
   const [loading, setLoading] = useState(true)
 
