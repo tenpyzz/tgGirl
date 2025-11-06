@@ -16,12 +16,12 @@
     "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.20.0",
+    "@prisma/client": "^6.19.0",
     "dotenv": "^16.4.5",
     "next": "^15.0.0",
     "node-telegram-bot-api": "^0.66.0",
     "openai": "^4.52.0",
-    "prisma": "^5.20.0",
+    "prisma": "^6.19.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
