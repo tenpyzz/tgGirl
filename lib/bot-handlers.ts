@@ -128,16 +128,21 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
+  console.log('🔵 Обработчик /start вызван!', { chatId: msg.chat.id, userId: msg.from?.id })
+  
   const chatId = msg.chat.id
   const from = msg.from
   const telegramUserId = from?.id
 
   if (!telegramUserId || !from) {
+    console.error('❌ Не удалось определить пользователя')
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
 
   try {
+    console.log('📝 Получаем или создаем пользователя:', telegramUserId)
+    
     // Получаем или создаем пользователя
     const user = await getOrCreateUser(
       telegramUserId,
@@ -146,7 +151,11 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
       from.last_name
     )
 
+    console.log('✅ Пользователь получен/создан:', user.id)
+
     // Всегда показываем приветствие и предлагаем открыть Mini App
+    console.log('📤 Отправляем приветственное сообщение...')
+    
     await bot.sendMessage(
       chatId,
       'Добро пожаловать! 👋\n\nЭто бот для общения с ИИ-девушками. Выберите девушку для общения в мини-приложении.',
@@ -163,8 +172,10 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
         }
       }
     )
+    
+    console.log('✅ Приветственное сообщение отправлено')
   } catch (error) {
-    console.error('Ошибка в обработчике /start:', error)
+    console.error('❌ Ошибка в обработчике /start:', error)
     await bot.sendMessage(chatId, 'Произошла ошибка. Попробуйте позже.')
   }
 })
@@ -185,11 +196,19 @@ bot.onText(/\/help/, async (msg: TelegramBot.Message) => {
 
 // Обработчик всех сообщений (кроме команд)
 bot.on('message', async (msg: TelegramBot.Message) => {
+  console.log('🔵 Обработчик message вызван!', { 
+    chatId: msg.chat.id, 
+    userId: msg.from?.id,
+    text: msg.text,
+    hasWebAppData: !!msg.web_app_data
+  })
+  
   const chatId = msg.chat.id
   const from = msg.from
   const telegramUserId = from?.id
 
   if (!telegramUserId || !from) {
+    console.error('❌ Не удалось определить пользователя в обработчике message')
     await bot.sendMessage(chatId, 'Ошибка: не удалось определить пользователя')
     return
   }
@@ -412,4 +431,10 @@ bot.on('polling_error', (error: Error) => {
 })
 
 console.log('✅ Telegram бот инициализирован')
+console.log('📋 Зарегистрированные обработчики:')
+console.log('  - /start команда')
+console.log('  - /help команда')
+console.log('  - Все сообщения (message event)')
+console.log('  - Callback queries')
+console.log('  - Polling errors')
 
