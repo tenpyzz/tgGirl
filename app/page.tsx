@@ -174,10 +174,7 @@ export default function Home() {
       })
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.details || errorData.error || 'Ошибка создания инвойса'
-        console.error('Ошибка создания инвойса:', errorData)
-        throw new Error(errorMessage)
+        throw new Error('Ошибка создания инвойса')
       }
 
       const data = await response.json()
