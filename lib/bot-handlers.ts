@@ -61,13 +61,16 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   })
 
   // Сохраняем сообщение пользователя
+  const userMessageContent = userMessage.trim()
   await prisma.message.create({
     data: {
       chatId: chat.id,
       role: 'user',
-      content: userMessage.trim(),
+      content: userMessageContent,
     },
   })
+
+  console.log('💬 Сообщение пользователя сохранено:', userMessageContent)
 
   // Получаем историю сообщений для контекста
   const chatHistory = await prisma.message.findMany({
@@ -80,6 +83,11 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     take: 20, // Последние 20 сообщений для контекста
   })
 
+  console.log('📜 История сообщений:', chatHistory.length, 'сообщений')
+  chatHistory.forEach((msg: { role: string; content: string }, idx: number) => {
+    console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`)
+  })
+
   // Получаем девушку и её системный промпт
   const girl = await prisma.girl.findUnique({
     where: { id: girlId },
@@ -90,16 +98,24 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   }
 
   // Формируем сообщения для OpenRouter
+  // Убеждаемся, что роли правильные и сообщения передаются корректно
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'system',
-      content: girl.systemPrompt,
+      content: girl.systemPrompt + '\n\nВажно: Внимательно читай и понимай сообщения пользователя. Отвечай на то, что он пишет, а не на общие темы. Если пользователь говорит о чем-то конкретном, отвечай именно на это.',
     },
-    ...chatHistory.map((message: { role: string; content: string }) => ({
-      role: message.role as 'user' | 'assistant',
-      content: message.content,
-    })),
+    ...chatHistory.map((message: { role: string; content: string }) => {
+      // Убеждаемся, что роль правильная
+      const role = message.role === 'user' ? 'user' : 'assistant'
+      return {
+        role: role as 'user' | 'assistant',
+        content: message.content,
+      }
+    }),
   ]
+
+  console.log('📤 Отправляем в ИИ:', messages.length, 'сообщений')
+  console.log('📝 Последнее сообщение пользователя:', userMessageContent)
 
   // Генерируем ответ от ИИ через OpenRouter
   const completion = await openrouter.chat.completions.create({
@@ -116,6 +132,8 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   }
 
   const aiResponse = responseContent.trim() || 'Извините, я не могу ответить сейчас.'
+
+  console.log('🤖 Ответ ИИ:', aiResponse.substring(0, 100) + '...')
 
   // Сохраняем ответ ИИ
   await prisma.message.create({
