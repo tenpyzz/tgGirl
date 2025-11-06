@@ -282,12 +282,54 @@ bot.onText(/\/start/, async (msg: TelegramBot.Message) => {
   }
 
   try {
-    await getOrCreateUser(
+    const user = await getOrCreateUser(
       telegramUserId,
       from.username,
       from.first_name,
       from.last_name
     )
+
+    // Если пользователь уже выбрал девочку, проверяем, есть ли первое сообщение
+    if (user.selectedGirlId && user.selectedGirl) {
+      const chat = await prisma.chat.findUnique({
+        where: {
+          userId_girlId: {
+            userId: user.id,
+            girlId: user.selectedGirlId,
+          },
+        },
+        include: {
+          messages: {
+            where: {
+              role: 'assistant',
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+            take: 1,
+          },
+        },
+      })
+
+      // Если нет сообщений от девочки, отправляем первое сообщение
+      if (!chat || chat.messages.length === 0) {
+        try {
+          await bot.sendChatAction(chatId, 'typing')
+          const firstMessage = await generateFirstMessage(user.id, user.selectedGirlId)
+          await bot.sendMessage(chatId, firstMessage)
+          return
+        } catch (error) {
+          console.error('Ошибка отправки первого сообщения:', error)
+        }
+      } else {
+        // Если первое сообщение уже было, просто приветствуем
+        await bot.sendMessage(
+          chatId,
+          `Привет! Я ${user.selectedGirl.name}. Продолжим общение? 💬`
+        )
+        return
+      }
+    }
 
     await bot.sendMessage(
       chatId,
@@ -339,8 +381,11 @@ bot.on('message', async (msg: TelegramBot.Message) => {
   // Проверяем, есть ли данные от WebApp в сообщении
   if (msg.web_app_data?.data) {
     try {
+      console.log('Получены данные от WebApp:', msg.web_app_data.data)
       const data = JSON.parse(msg.web_app_data.data)
+      console.log('Распарсенные данные:', data)
       if (data.action === 'girl_selected') {
+        console.log('Обработка выбора девочки через WebApp, girlId:', data.girlId)
         // Получаем пользователя (обновляем данные, чтобы убедиться, что выбор актуален)
         const user = await getOrCreateUser(
           telegramUserId,
@@ -371,9 +416,11 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         // Проверяем, выбрана ли девочка
         if (updatedUser && updatedUser.selectedGirlId && updatedUser.selectedGirl) {
           const girl = updatedUser.selectedGirl
+          console.log('Девочка выбрана:', girl.name, 'ID:', updatedUser.selectedGirlId)
           
           // Генерируем первое сообщение от девочки через ИИ в формате ролевой игры
           try {
+            console.log('Начинаем генерацию первого сообщения...')
             // Показываем индикатор печати
             await bot.sendChatAction(chatId, 'typing')
             
@@ -382,9 +429,11 @@ bot.on('message', async (msg: TelegramBot.Message) => {
               updatedUser.id,
               updatedUser.selectedGirlId
             )
+            console.log('Первое сообщение сгенерировано, отправляем...')
             
             // Отправляем первое сообщение от девочки (девочка ПЕРВАЯ начинает общение)
             await bot.sendMessage(chatId, firstMessage)
+            console.log('Первое сообщение отправлено успешно')
           } catch (aiError) {
             console.error('Ошибка генерации первого сообщения:', aiError)
             // Если ошибка, отправляем стандартное приветствие
@@ -397,6 +446,8 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           }
           
           return // Не обрабатываем это сообщение дальше
+        } else {
+          console.log('Девочка не выбрана или не найдена')
         }
         return // Не обрабатываем это сообщение дальше
       }
@@ -445,6 +496,45 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         }
       )
       return
+    }
+
+    // Проверяем, есть ли первое сообщение от девочки
+    const chat = await prisma.chat.findUnique({
+      where: {
+        userId_girlId: {
+          userId: user.id,
+          girlId: user.selectedGirlId,
+        },
+      },
+      include: {
+        messages: {
+          where: {
+            role: 'assistant',
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 1,
+        },
+      },
+    })
+
+    // Если нет сообщений от девочки, отправляем первое сообщение
+    if (!chat || chat.messages.length === 0) {
+      console.log('Первое сообщение от пользователя, но нет сообщений от девочки. Отправляем первое сообщение...')
+      try {
+        await bot.sendChatAction(chatId, 'typing')
+        const firstMessage = await generateFirstMessage(user.id, user.selectedGirlId)
+        console.log('Первое сообщение сгенерировано, отправляем пользователю...')
+        await bot.sendMessage(chatId, firstMessage)
+        console.log('Первое сообщение отправлено успешно')
+        return
+      } catch (error) {
+        console.error('Ошибка отправки первого сообщения:', error)
+        // Продолжаем обработку как обычное сообщение
+      }
+    } else {
+      console.log('Уже есть сообщения от девочки, продолжаем обычный диалог')
     }
 
     // Показываем индикатор печати
