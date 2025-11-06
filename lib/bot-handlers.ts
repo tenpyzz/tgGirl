@@ -2,7 +2,7 @@ import { bot } from './telegram'
 import TelegramBot from 'node-telegram-bot-api'
 
 // URL вашего Mini App
-const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'
+const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'
 
 // Обработчик команды /start
 bot.onText(/\/start/, async (msg: TelegramBot.Message) => {

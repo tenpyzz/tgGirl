@@ -15,7 +15,7 @@ function getOpenRouterClient(): OpenAI {
       apiKey: apiKey,
       baseURL: 'https://openrouter.ai/api/v1',
       defaultHeaders: {
-        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+        'HTTP-Referer': process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL || 'http://localhost:3000',
         'X-Title': 'Telegram Mini App - AI Chat',
       },
     })

@@ -5,10 +5,10 @@ let botInstance: TelegramBot | null = null
 
 function getBot(): TelegramBot {
   if (!botInstance) {
-    const token = process.env.TELEGRAM_BOT_TOKEN
+    const token = process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN
     
     if (!token) {
-      throw new Error('TELEGRAM_BOT_TOKEN не установлен в переменных окружения')
+      throw new Error('TELEGRAM_BOT_TOKEN или BOT_TOKEN не установлен в переменных окружения')
     }
     
     botInstance = new TelegramBot(token, {
