@@ -14,6 +14,7 @@ interface Girl {
 export default function Home() {
   const [girl, setGirl] = useState<Girl | null>(null)
   const [loading, setLoading] = useState(true)
+  const [isSelecting, setIsSelecting] = useState(false)
 
   useEffect(() => {
     // Инициализация Telegram WebApp
@@ -40,6 +41,16 @@ export default function Home() {
   }
 
   const handleGirlClick = async (girlId: number) => {
+    // Предотвращаем повторные нажатия
+    if (isSelecting) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert('Вы выбрали девочку, подождите')
+      }
+      return
+    }
+
+    setIsSelecting(true)
+
     try {
       // Получаем initData для отправки на сервер
       const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
@@ -82,9 +93,8 @@ export default function Home() {
           console.error('Ошибка отправки данных боту:', e)
         }
         
-        // Открываем чат с ботом
-        // Бот попытается отправить первое сообщение через API endpoint
-        webApp.openTelegramLink(`https://t.me/${botUsername}?start=girl_selected`)
+        // Открываем чат с ботом (без параметра start)
+        webApp.openTelegramLink(`https://t.me/${botUsername}`)
         
         // Закрываем мини-приложение с небольшой задержкой
         // чтобы дать время боту отправить сообщение
@@ -98,6 +108,8 @@ export default function Home() {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         window.Telegram.WebApp.showAlert('Ошибка при выборе девочки. Попробуйте еще раз.')
       }
+      // Снимаем блокировку при ошибке
+      setIsSelecting(false)
     }
   }
 
@@ -122,8 +134,9 @@ export default function Home() {
       <h1 className={styles.title}>Выберите девушку</h1>
       
       <div 
-        className={styles.girlCard}
-        onClick={() => handleGirlClick(girl.id)}
+        className={`${styles.girlCard} ${isSelecting ? styles.disabled : ''}`}
+        onClick={() => !isSelecting && handleGirlClick(girl.id)}
+        style={isSelecting ? { opacity: 0.6, pointerEvents: 'none' } : {}}
       >
         <div className={styles.girlPhoto}>
           {girl.photoUrl ? (
