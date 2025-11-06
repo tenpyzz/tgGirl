@@ -25,16 +25,25 @@ function getTelegramUserId(request: Request): number | null {
       if (userParam) {
         const user = JSON.parse(decodeURIComponent(userParam))
         if (user.id) {
+          console.log('User ID получен из initData:', user.id)
           return user.id
         }
       }
     } catch (e) {
       console.error('Ошибка парсинга initData:', e)
+      console.error('initData:', initData)
     }
+  } else {
+    console.warn('initData не найден в заголовках')
   }
   
   // Для тестирования на localhost используем дефолтный ID
-  return 123456789 // Дефолтный ID для локальной разработки
+  if (process.env.NODE_ENV === 'development') {
+    return 123456789 // Дефолтный ID для локальной разработки
+  }
+  
+  // В production возвращаем null, если не удалось получить ID
+  return null
 }
 
 export async function POST(
@@ -175,6 +184,13 @@ export async function POST(
     const errorDetails = error instanceof Error ? error.stack : String(error)
     
     console.error('Детали ошибки:', errorDetails)
+    
+    // Логируем дополнительную информацию для отладки
+    console.error('Переменные окружения:', {
+      hasOpenRouterKey: !!process.env.OPENROUTER_API_KEY,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      nodeEnv: process.env.NODE_ENV,
+    })
     
     return NextResponse.json(
       { 
