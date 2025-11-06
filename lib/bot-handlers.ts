@@ -62,7 +62,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
   // Сохраняем сообщение пользователя
   const userMessageContent = userMessage.trim()
-  await prisma.message.create({
+  const savedMessage = await prisma.message.create({
     data: {
       chatId: chat.id,
       role: 'user',
@@ -71,21 +71,47 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   })
 
   console.log('💬 Сообщение пользователя сохранено:', userMessageContent)
+  console.log('💾 ID сохраненного сообщения:', savedMessage.id)
 
-  // Получаем историю сообщений для контекста
-  const chatHistory = await prisma.message.findMany({
+  // Получаем ВСЕ сообщения для контекста (без ограничения, чтобы убедиться, что новое сообщение попало)
+  const allMessages = await prisma.message.findMany({
     where: {
       chatId: chat.id,
     },
     orderBy: {
       createdAt: 'asc',
     },
-    take: 20, // Последние 20 сообщений для контекста
   })
 
-  console.log('📜 История сообщений:', chatHistory.length, 'сообщений')
+  // Берем последние 20 сообщений (включая только что сохраненное)
+  let chatHistory = allMessages.slice(-20)
+
+  console.log('📜 Всего сообщений в чате:', allMessages.length)
+  console.log('📜 История сообщений (последние 20):', chatHistory.length, 'сообщений')
+  
+  // Проверяем, что последнее сообщение пользователя точно в истории
+  const lastUserMessage = chatHistory[chatHistory.length - 1]
+  if (lastUserMessage && lastUserMessage.role === 'user' && lastUserMessage.content === userMessageContent) {
+    console.log('✅ Последнее сообщение пользователя найдено в истории!')
+  } else {
+    console.error('❌ ОШИБКА: Последнее сообщение пользователя НЕ найдено в истории!')
+    console.error('   Ожидалось:', userMessageContent)
+    console.error('   Найдено:', lastUserMessage?.content)
+    console.error('   ⚠️ Добавляем сообщение вручную в историю!')
+    
+    // Добавляем сообщение вручную, если его нет в истории
+    // Проверяем, есть ли оно вообще в истории
+    const messageInHistory = chatHistory.find(m => m.id === savedMessage.id)
+    if (!messageInHistory) {
+      // Если сообщения нет в истории, добавляем его вручную
+      chatHistory = [...chatHistory, savedMessage].slice(-20)
+      console.log('✅ Сообщение добавлено в историю вручную!')
+    }
+  }
+
   chatHistory.forEach((msg: { role: string; content: string }, idx: number) => {
-    console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...`)
+    const isLast = idx === chatHistory.length - 1
+    console.log(`  ${idx + 1}. [${msg.role}]: ${msg.content.substring(0, 50)}...${isLast ? ' ⬅ ПОСЛЕДНЕЕ' : ''}`)
   })
 
   // Получаем девушку и её системный промпт
@@ -111,29 +137,56 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
 ${girl.systemPrompt}`
 
+  // Формируем массив сообщений для ИИ
+  const historyMessages = chatHistory.map((message: { role: string; content: string }) => {
+    // Убеждаемся, что роль правильная
+    const role = message.role === 'user' ? 'user' : 'assistant'
+    return {
+      role: role as 'user' | 'assistant',
+      content: message.content,
+    }
+  })
+
+  // Проверяем, что последнее сообщение пользователя точно в истории
+  const lastHistoryMessage = historyMessages[historyMessages.length - 1]
+  if (!lastHistoryMessage || lastHistoryMessage.role !== 'user' || lastHistoryMessage.content !== userMessageContent) {
+    console.error('❌ КРИТИЧЕСКАЯ ОШИБКА: Последнее сообщение пользователя НЕ в истории!')
+    console.error('   Добавляем сообщение вручную в массив для ИИ!')
+    // Добавляем сообщение пользователя вручную
+    historyMessages.push({
+      role: 'user',
+      content: userMessageContent,
+    })
+  }
+
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: enhancedSystemPrompt,
     },
-    ...chatHistory.map((message: { role: string; content: string }) => {
-      // Убеждаемся, что роль правильная
-      const role = message.role === 'user' ? 'user' : 'assistant'
-      return {
-        role: role as 'user' | 'assistant',
-        content: message.content,
-      }
-    }),
+    ...historyMessages,
   ]
 
   console.log('📤 Отправляем в ИИ:', messages.length, 'сообщений')
   console.log('📝 Последнее сообщение пользователя:', userMessageContent)
+  
+  // Проверяем, что последнее сообщение пользователя точно в массиве для ИИ
+  const lastUserMessageInArray = messages.filter(m => m.role === 'user').pop()
+  if (lastUserMessageInArray && lastUserMessageInArray.content === userMessageContent) {
+    console.log('✅ Последнее сообщение пользователя найдено в массиве для ИИ!')
+  } else {
+    console.error('❌ ОШИБКА: Последнее сообщение пользователя НЕ найдено в массиве для ИИ!')
+    console.error('   Ожидалось:', userMessageContent)
+    console.error('   Найдено в массиве:', lastUserMessageInArray?.content)
+  }
+  
   console.log('📋 Все сообщения для ИИ:')
   messages.forEach((msg, idx) => {
     if (msg.role === 'system') {
       console.log(`  ${idx + 1}. [SYSTEM]: ${(msg.content as string).substring(0, 100)}...`)
     } else {
-      console.log(`  ${idx + 1}. [${msg.role}]: ${(msg.content as string)}`)
+      const isLastUserMessage = msg.role === 'user' && msg.content === userMessageContent
+      console.log(`  ${idx + 1}. [${msg.role}]: ${(msg.content as string)}${isLastUserMessage ? ' ⬅ ПОСЛЕДНЕЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ' : ''}`)
     }
   })
 
