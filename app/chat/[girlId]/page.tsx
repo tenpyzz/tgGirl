@@ -77,8 +77,17 @@ export default function ChatPage() {
     setLoading(true)
     try {
       const userId = getTelegramUserId()
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (initData) {
+        headers['x-telegram-init-data'] = initData
+      }
+      
       const url = `/api/chat/${girlId}/messages${userId ? `?userId=${userId}` : ''}`
-      const response = await fetch(url)
+      const response = await fetch(url, { headers })
       if (response.ok) {
         const data = await response.json()
         setMessages(data)
@@ -110,12 +119,19 @@ export default function ChatPage() {
 
     try {
       const userId = getTelegramUserId()
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      }
+      if (initData) {
+        headers['x-telegram-init-data'] = initData
+      }
+      
       const url = `/api/chat/${girlId}/send${userId ? `?userId=${userId}` : ''}`
       const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ message: userMessage }),
       })
 
