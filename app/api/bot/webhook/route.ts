@@ -10,9 +10,9 @@ function ensureHandlers() {
       // Динамический импорт обработчиков только во время выполнения
       require('@/lib/bot-handlers')
       handlersImported = true
+      console.log('✅ Обработчики бота загружены через /bot/webhook')
     } catch (error) {
-      console.error('Ошибка импорта обработчиков бота:', error)
-      // Не блокируем запуск приложения, если обработчики не загрузились
+      console.error('❌ Ошибка импорта обработчиков бота:', error)
     }
   }
 }
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     
     const body = await request.json()
     
-    console.log('📨 Получено обновление от Telegram:', body.update_id)
+    console.log('📨 Получено обновление от Telegram через /bot/webhook:', body.update_id)
     
     // Обработка обновлений от Telegram
     await bot.processUpdate(body)

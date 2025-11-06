@@ -12,9 +12,19 @@ function getBot(): TelegramBot {
       throw new Error('TELEGRAM_BOT_TOKEN или BOT_TOKEN не установлен в переменных окружения')
     }
     
+    // В production используем webhook, в development - polling
+    const usePolling = process.env.NODE_ENV === 'development' && !process.env.WEBHOOK_URL
+    
     botInstance = new TelegramBot(token, {
-      polling: process.env.NODE_ENV === 'development',
+      polling: usePolling,
     })
+    
+    // Если используем webhook, отключаем polling
+    if (!usePolling && process.env.NODE_ENV === 'production') {
+      botInstance.stopPolling().catch(() => {
+        // Игнорируем ошибки, если polling не запущен
+      })
+    }
     
     // Загружаем обработчики при инициализации бота
     if (!handlersImported) {
