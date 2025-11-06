@@ -43,6 +43,17 @@ function getBot(): TelegramBot {
       // Убеждаемся, что URL правильный
       let webhookUrl = process.env.WEBHOOK_URL
       
+      // Убираем /bot если есть в URL
+      webhookUrl = webhookUrl.replace(/\/bot\/api\/webhook$/, '/api/webhook')
+      webhookUrl = webhookUrl.replace(/\/bot\/webhook$/, '/api/webhook')
+      
+      // Если URL все еще содержит /bot, убираем его
+      const urlObj = new URL(webhookUrl)
+      if (urlObj.pathname.includes('/bot')) {
+        urlObj.pathname = urlObj.pathname.replace(/\/bot/g, '')
+        webhookUrl = urlObj.toString()
+      }
+      
       // Если URL не содержит /api/webhook, добавляем его
       if (!webhookUrl.includes('/api/webhook')) {
         if (webhookUrl.endsWith('/webhook')) {
@@ -50,7 +61,8 @@ function getBot(): TelegramBot {
           webhookUrl = webhookUrl.replace('/webhook', '/api/webhook')
         } else {
           // Добавляем /api/webhook если его нет
-          webhookUrl = webhookUrl.replace(/\/$/, '') + '/api/webhook'
+          const baseUrl = webhookUrl.replace(/\/$/, '')
+          webhookUrl = baseUrl + (baseUrl.endsWith('/api') ? '/webhook' : '/api/webhook')
         }
       }
       
