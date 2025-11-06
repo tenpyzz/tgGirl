@@ -34,7 +34,7 @@ function getTelegramUserId(request: Request): number | null {
   }
   
   // Для тестирования на localhost используем дефолтный ID
-  return 123456789 // Замените на реальный ID для тестирования
+  return 123456789 // Дефолтный ID для локальной разработки
 }
 
 export async function POST(
@@ -135,12 +135,18 @@ export async function POST(
     ]
 
     // Генерируем ответ от ИИ через OpenRouter
-    const completion = await openrouter.chat.completions.create({
-      model: 'deepseek/deepseek-v3-0324', // DeepSeek V3 0324 через OpenRouter
-      messages: messages,
-      temperature: 0.9, // Больше креативности
-      max_tokens: 500,
-    })
+    let completion
+    try {
+      completion = await openrouter.chat.completions.create({
+        model: 'deepseek/deepseek-v3-0324', // DeepSeek V3 0324 через OpenRouter
+        messages: messages,
+        temperature: 0.9, // Больше креативности
+        max_tokens: 500,
+      })
+    } catch (apiError) {
+      console.error('Ошибка OpenRouter API:', apiError)
+      throw new Error(`Ошибка OpenRouter API: ${apiError instanceof Error ? apiError.message : 'Неизвестная ошибка'}`)
+    }
 
     const aiResponse = completion.choices[0]?.message?.content || 'Извините, я не могу ответить сейчас.'
 
@@ -163,8 +169,18 @@ export async function POST(
     })
   } catch (error) {
     console.error('Ошибка отправки сообщения:', error)
+    
+    // Более детальная информация об ошибке
+    const errorMessage = error instanceof Error ? error.message : 'Неизвестная ошибка'
+    const errorDetails = error instanceof Error ? error.stack : String(error)
+    
+    console.error('Детали ошибки:', errorDetails)
+    
     return NextResponse.json(
-      { error: 'Ошибка отправки сообщения' },
+      { 
+        error: 'Ошибка отправки сообщения',
+        details: process.env.NODE_ENV === 'development' ? errorMessage : undefined
+      },
       { status: 500 }
     )
   }
