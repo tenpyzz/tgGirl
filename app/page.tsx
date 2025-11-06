@@ -41,8 +41,53 @@ export default function Home() {
     }
   }
 
-  const handleGirlClick = (girlId: number) => {
-    router.push(`/chat/${girlId}`)
+  const handleGirlClick = async (girlId: number) => {
+    try {
+      // Получаем initData для отправки на сервер
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      
+      // Вызываем API для сохранения выбора девочки
+      const response = await fetch('/api/select-girl', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+        body: JSON.stringify({ girlId }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Ошибка сохранения выбора')
+      }
+
+      // Получаем имя бота из API
+      const botInfoResponse = await fetch('/api/bot-info')
+      let botUsername = 'your_bot_username'
+      
+      if (botInfoResponse.ok) {
+        const botInfo = await botInfoResponse.json()
+        botUsername = botInfo.username || botUsername
+      }
+      
+      // Закрываем мини-приложение и перекидываем в чат с ботом
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        const webApp = window.Telegram.WebApp
+        
+        // Открываем чат с ботом
+        webApp.openTelegramLink(`https://t.me/${botUsername}`)
+        
+        // Закрываем мини-приложение
+        setTimeout(() => {
+          webApp.close()
+        }, 500)
+      }
+    } catch (error) {
+      console.error('Ошибка при выборе девочки:', error)
+      // Показываем ошибку пользователю
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert('Ошибка при выборе девочки. Попробуйте еще раз.')
+      }
+    }
   }
 
   if (loading) {

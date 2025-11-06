@@ -1,6 +1,10 @@
+const path = require('path')
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Указываем корневую директорию проекта для устранения предупреждения о lockfiles
+  outputFileTracingRoot: path.join(__dirname),
   // Переменные окружения для Next.js
   env: {
     TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN,

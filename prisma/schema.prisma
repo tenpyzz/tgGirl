@@ -17,11 +17,13 @@ model User {
   username      String?  // Username пользователя
   firstName     String?
   lastName      String?
+  selectedGirlId Int?    // ID выбранной девочки
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
   // Связь с чатами
   chats         Chat[]
+  selectedGirl  Girl?    @relation("SelectedGirl", fields: [selectedGirlId], references: [id])
 }
 
 // Модель девушки (ИИ персонажа)
@@ -36,6 +38,7 @@ model Girl {
   
   // Связь с чатами
   chats         Chat[]
+  selectedBy    User[]   @relation("SelectedGirl")
 }
 
 // Модель чата между пользователем и девушкой
