@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { promises as fs } from 'fs'
 import { getGirlPhotoPath } from '@/lib/default-girls'
 
-export async function GET(_request: Request, { params }: { params: { girlId: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: { girlId: string } }) {
   const girlId = Number(params.girlId)
 
   if (!Number.isInteger(girlId)) {
