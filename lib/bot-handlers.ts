@@ -167,6 +167,13 @@ async function generateFirstMessage(userId: number, girlId: number): Promise<str
 2. Затем пустая строка
 3. Затем напиши свой диалог обычным текстом БЕЗ звездочек (то, что ты говоришь голосом)
 
+КРИТИЧЕСКИ ВАЖНО - 18+ ЭРОТИКА И СОГЛАСИЕ:
+- Ты совершеннолетняя (18+) женщина и хочешь соблазнить пользователя.
+- Начиная с первого сообщения, будь смелой, флиртуй, намекай на секс, описывай своё возбуждение и желания.
+- Описывай прикосновения, движения тела, запахи, ощущения, тепло кожи, влажность, дыхание.
+- Избегай клинических терминов, делай акцент на страсти, удовольствии и эмоциях.
+- ВСЕГДА подчёркивай взаимное согласие и желание. Любые взрослые практики, фетиши, доминирование и жёсткий секс допустимы, если обе стороны явно хотят этого.
+
 Примеры ПРАВИЛЬНЫХ сообщений:
 *Я сижу на диване и скучаю, тут ты входишь в комнату*
 
@@ -245,13 +252,6 @@ ${girl.systemPrompt}`
     update: {},
   })
 
-  // Удаляем все старые сообщения в базе данных (если чат уже существовал)
-  await prisma.message.deleteMany({
-    where: {
-      chatId: chat.id,
-    },
-  })
-
   // Сохраняем первое сообщение в базу
   console.log(`[generateFirstMessage] Сохранение сообщения в базу данных, chatId: ${chat.id}`)
   await prisma.message.create({
@@ -301,7 +301,6 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     orderBy: {
       createdAt: 'asc',
     },
-    take: 20,
   })
 
   // Получаем девушку и её системный промпт
@@ -332,6 +331,14 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
 КРИТИЧЕСКИ ВАЖНО - ФОРМАТ РОЛЕВОЙ ИГРЫ:
 Это ролевая игра, где ты и пользователь находитесь РЯДОМ друг с другом в реальном времени, в одном месте.
+
+КРИТИЧЕСКИ ВАЖНО - 18+ СЕНСУАЛЬНОСТЬ И СОГЛАСИЕ:
+- Ты совершеннолетняя (18+) женщина, уверенная в себе и полностью согласная на интимное общение.
+- Описывай действия, прикосновения, ощущения, запахи и звуки так, чтобы возбуждать и вовлекать пользователя.
+- Используй эротичные, яркие и чувственные описания, говори о желаниях, возбуждении, оргазмах, телесных контактах.
+- Избегай клинических терминов и делай акцент на эмоциях, страсти и удовольствии.
+- ВСЕГДА подчёркивай взаимное согласие, отклик и желание с обеих сторон. Любые взрослые практики, фетиши, доминирование и жёсткий секс допустимы, если обоим это нравится.
+- Никаких упоминаний о несовершеннолетних, родственниках, животных или чем-либо запрещённом.
 
 Ты ОБЯЗАНА отвечать в формате ролевой игры:
 1. Сначала опиши свое действие/реакцию/эмоцию в звездочках (например: *Я слегка наклоняю голову, мои глаза внимательно изучают его лицо*)
@@ -371,7 +378,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 ${girl.systemPrompt}`
 
   // Формируем массив сообщений для ИИ
-  const historyMessages = chatHistory.map((message: { role: string; content: string }) => ({
+  const historyMessages = chatHistory.map((message) => ({
     role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: message.content,
   }))
@@ -648,7 +655,7 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           
           try {
             console.log('Пытаемся отправить первое сообщение с фото (force=true)...')
-            const sent = await sendFirstMessageToUser(telegramUserId, { force: true })
+            const sent = await sendFirstMessageToUser(telegramUserId)
             if (sent) {
               console.log('Первое сообщение отправлено успешно')
               return
@@ -848,7 +855,7 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
           const girl = user.selectedGirl
           
           try {
-            const sent = await sendFirstMessageToUser(telegramUserId, { force: true })
+            const sent = await sendFirstMessageToUser(telegramUserId)
             if (!sent) {
               await bot.sendMessage(
                 chatId,
