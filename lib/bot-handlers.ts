@@ -1,9 +1,11 @@
+import { createReadStream } from 'fs'
 import { bot } from './telegram'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from './prisma'
 import { openrouter } from './openrouter'
 import type OpenAI from 'openai'
 import { PACKAGES, getPackageUsdPrice, type PackageId } from './packages'
+import { getGirlPhotoPath } from './default-girls'
 
 // Регистрация обработчиков бота
 
@@ -89,11 +91,35 @@ export async function sendFirstMessageToUser(telegramUserId: number): Promise<bo
 
     // Генерируем первое сообщение
     const firstMessage = await generateFirstMessage(user.id, user.selectedGirlId)
-    
-    // Отправляем сообщение пользователю
-    // В Telegram Bot API, для личных чатов chat_id = user_id
+    const girlPhoto = getGirlPhotoPath(user.selectedGirlId)
+
+    if (girlPhoto) {
+      try {
+        await bot.sendChatAction(telegramUserId, 'upload_photo')
+        const caption = firstMessage.length <= 1024 ? firstMessage : undefined
+
+        await bot.sendPhoto(
+          telegramUserId,
+          createReadStream(girlPhoto.filePath),
+          caption
+            ? { caption }
+            : undefined
+        )
+
+        if (!caption) {
+          await bot.sendMessage(telegramUserId, firstMessage)
+        }
+
+        console.log(`[sendFirstMessageToUser] Фото и первое сообщение отправлены пользователю`)
+        return true
+      } catch (photoError) {
+        console.error('[sendFirstMessageToUser] Ошибка отправки фото с первым сообщением:', photoError)
+      }
+    }
+
+    await bot.sendChatAction(telegramUserId, 'typing')
     await bot.sendMessage(telegramUserId, firstMessage)
-    console.log(`[sendFirstMessageToUser] Первое сообщение успешно отправлено пользователю`)
+    console.log(`[sendFirstMessageToUser] Первое сообщение (без фото) успешно отправлено пользователю`)
     
     return true
   } catch (error) {
@@ -402,6 +428,7 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg: TelegramBot.Message, match: RegExp
 
     // Если пользователь уже выбрал девочку, проверяем, есть ли первое сообщение
     if (user.selectedGirlId && user.selectedGirl) {
+      const girl = user.selectedGirl
       const chat = await prisma.chat.findUnique({
         where: {
           userId_girlId: {
@@ -425,12 +452,20 @@ bot.onText(/\/start(?:\s+(.+))?/, async (msg: TelegramBot.Message, match: RegExp
       // Если нет сообщений от девочки, отправляем первое сообщение
       if (!chat || chat.messages.length === 0) {
         try {
-          await bot.sendChatAction(chatId, 'typing')
-          const firstMessage = await generateFirstMessage(user.id, user.selectedGirlId)
-          await bot.sendMessage(chatId, firstMessage)
-          return
+          const sent = await sendFirstMessageToUser(telegramUserId)
+          if (sent) {
+            return
+          }
         } catch (error) {
           console.error('Ошибка отправки первого сообщения:', error)
+        }
+
+        if (girl) {
+          await bot.sendMessage(
+            chatId,
+            `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+          )
+          return
         }
       } else {
         // Если первое сообщение уже было, просто приветствуем
@@ -533,7 +568,7 @@ bot.on('message', async (msg: TelegramBot.Message) => {
       })
 
       // Определяем сумму в зависимости от метода оплаты
-      const stars = paymentMethod === 'stars' ? pkg.stars : null
+      const stars = paymentMethod === 'stars' ? pkg.stars : 0
       const usdAmount = paymentMethod === 'usd' ? getPackageUsdPrice(packageId as PackageId) : null
 
       // Сохраняем историю платежа
@@ -548,7 +583,7 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           usdAmount: usdAmount,
           invoicePayload: msg.successful_payment.invoice_payload || null,
           telegramPaymentId: msg.successful_payment.telegram_payment_charge_id || null,
-        },
+        } as any,
       })
 
       console.log(`Баланс пользователя ${telegramUserId} пополнен на ${pkg.messages} сообщений. Новый баланс: ${(updatedUser as any).messageBalance}`)
@@ -604,34 +639,27 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           const girl = updatedUser.selectedGirl
           console.log('Девочка выбрана:', girl.name, 'ID:', updatedUser.selectedGirlId)
           
-          // Генерируем первое сообщение от девочки через ИИ в формате ролевой игры
+          // Пробуем отправить первое сообщение от девочки вместе с фото
           try {
-            console.log('Начинаем генерацию первого сообщения...')
-            // Показываем индикатор печати
-            await bot.sendChatAction(chatId, 'typing')
-            
-            // Генерируем первое сообщение в формате ролевой игры (действие в звездочках + диалог)
-            const firstMessage = await generateFirstMessage(
-              updatedUser.id,
-              updatedUser.selectedGirlId
-            )
-            console.log('Первое сообщение сгенерировано, отправляем...')
-            
-            // Отправляем первое сообщение от девочки (девочка ПЕРВАЯ начинает общение)
-            await bot.sendMessage(chatId, firstMessage)
-            console.log('Первое сообщение отправлено успешно')
+            console.log('Пытаемся отправить первое сообщение с фото...')
+            const sent = await sendFirstMessageToUser(telegramUserId)
+            if (sent) {
+              console.log('Первое сообщение отправлено успешно')
+              return
+            }
           } catch (aiError) {
             console.error('Ошибка генерации первого сообщения:', aiError)
-            // Если ошибка, отправляем стандартное приветствие
-            if (girl) {
-              await bot.sendMessage(
-                chatId,
-                `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
-              )
-            }
+          }
+          
+          if (girl) {
+            await bot.sendMessage(
+              chatId,
+              `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+            )
           }
           
           return // Не обрабатываем это сообщение дальше
+          
         } else {
           console.log('Девочка не выбрана или не найдена')
         }
@@ -709,15 +737,21 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     if (!chat || chat.messages.length === 0) {
       console.log('Первое сообщение от пользователя, но нет сообщений от девочки. Отправляем первое сообщение...')
       try {
-        await bot.sendChatAction(chatId, 'typing')
-        const firstMessage = await generateFirstMessage(user.id, user.selectedGirlId)
-        console.log('Первое сообщение сгенерировано, отправляем пользователю...')
-        await bot.sendMessage(chatId, firstMessage)
-        console.log('Первое сообщение отправлено успешно')
-        return
+        const sent = await sendFirstMessageToUser(telegramUserId)
+        if (sent) {
+          return
+        }
       } catch (error) {
         console.error('Ошибка отправки первого сообщения:', error)
         // Продолжаем обработку как обычное сообщение
+      }
+
+      if (user.selectedGirl) {
+        await bot.sendMessage(
+          chatId,
+          `Привет! Я ${user.selectedGirl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+        )
+        return
       }
     } else {
       console.log('Уже есть сообщения от девочки, продолжаем обычный диалог')
@@ -828,17 +862,13 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
           // Если это первое сообщение в чате, отправляем первое сообщение в формате ролевой игры
           if (!chat || chat.messages.length === 0) {
             try {
-              // Показываем индикатор печати
-              await bot.sendChatAction(chatId, 'typing')
-              
-              // Генерируем первое сообщение в формате ролевой игры (действие в звездочках + диалог)
-              const firstMessage = await generateFirstMessage(
-                user.id,
-                user.selectedGirlId
-              )
-              
-              // Отправляем первое сообщение от девочки
-              await bot.sendMessage(chatId, firstMessage)
+              const sent = await sendFirstMessageToUser(telegramUserId)
+              if (!sent) {
+                await bot.sendMessage(
+                  chatId,
+                  `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+                )
+              }
             } catch (aiError) {
               console.error('Ошибка генерации первого сообщения:', aiError)
               // Если ошибка, отправляем стандартное приветствие

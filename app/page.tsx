@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { initTelegramWebApp } from '@/lib/telegram-webapp'
 import { PACKAGES, getPackageUsdPrice, getPackageOldUsdPrice, type PackageId } from '@/lib/packages'
+import { GIRL_PROFILES, type GirlProfile } from '@/lib/girl-profiles'
 import styles from './page.module.css'
 
 interface Girl {
@@ -13,6 +14,59 @@ interface Girl {
 }
 
 type Tab = 'main' | 'topup' | 'admin'
+
+const DESCRIPTION_STOP_WORDS = new Set([
+  'и',
+  'а',
+  'но',
+  'как',
+  'который',
+  'которая',
+  'которые',
+  'которое',
+  'что',
+  'чтобы',
+  'с',
+  'со',
+  'в',
+  'во',
+  'на',
+  'к',
+  'ко',
+  'по',
+  'из',
+  'за',
+  'от',
+  'до',
+  'для',
+  'при',
+  'об',
+  'обо',
+  'у',
+  'же',
+  'бы',
+  'ли',
+  'не',
+  'его',
+  'ее',
+  'их',
+  'ты',
+  'она',
+  'он',
+  'мы',
+  'вы',
+  'они',
+  'это',
+  'тот',
+  'та',
+  'такая',
+  'такой',
+  'такие',
+  'самая',
+  'самый',
+  'самое',
+  'самые'
+])
 
 interface User {
   id: number
@@ -36,6 +90,7 @@ export default function Home() {
   const [girls, setGirls] = useState<Girl[]>([])
   const [loading, setLoading] = useState(true)
   const [isSelecting, setIsSelecting] = useState(false)
+  const [selectedGirl, setSelectedGirl] = useState<Girl | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
   const [activeTab, setActiveTab] = useState<Tab>('main')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
@@ -236,11 +291,29 @@ export default function Home() {
     }
   }
 
-  const handleGirlClick = async (girlId: number) => {
-    // Предотвращаем повторные нажатия
+  const handleGirlCardClick = (girl: Girl) => {
     if (isSelecting) {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-        window.Telegram.WebApp.showAlert('Вы выбрали девочку, подождите')
+        window.Telegram.WebApp.showAlert('Подождите, мы уже запускаем общение')
+      }
+      return
+    }
+
+    setSelectedGirl(girl)
+
+    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
+      try {
+        window.Telegram.WebApp.HapticFeedback.impactOccurred('medium')
+      } catch (e) {
+        console.warn('Haptic feedback недоступен:', e)
+      }
+    }
+  }
+
+  const startConversationWithGirl = async (girlId: number) => {
+    if (isSelecting) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert('Вы уже запускаете общение с выбранной девушкой')
       }
       return
     }
@@ -248,10 +321,8 @@ export default function Home() {
     setIsSelecting(true)
 
     try {
-      // Получаем initData для отправки на сервер
       const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
-      
-      // Вызываем API для сохранения выбора девочки
+
       const response = await fetch('/api/select-girl', {
         method: 'POST',
         headers: {
@@ -265,48 +336,61 @@ export default function Home() {
         throw new Error('Ошибка сохранения выбора')
       }
 
-      // Получаем имя бота из API
       const botInfoResponse = await fetch('/api/bot-info')
       let botUsername = 'your_bot_username'
-      
+
       if (botInfoResponse.ok) {
         const botInfo = await botInfoResponse.json()
         botUsername = botInfo.username || botUsername
       }
-      
-      // Закрываем мини-приложение и перекидываем в чат с ботом
+
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         const webApp = window.Telegram.WebApp
-        
-        // Отправляем данные боту о выборе девочки
-        // Бот получит эти данные и отправит приветствие
+
         try {
-          webApp.sendData(JSON.stringify({ 
-            action: 'girl_selected', 
-            girlId: girlId 
-          }))
+          webApp.sendData(
+            JSON.stringify({
+              action: 'girl_selected',
+              girlId,
+            })
+          )
         } catch (e) {
           console.error('Ошибка отправки данных боту:', e)
         }
-        
-        // Открываем чат с ботом (без параметра start)
+
+        setSelectedGirl(null)
+
         webApp.openTelegramLink(`https://t.me/${botUsername}`)
-        
-        // Закрываем мини-приложение с небольшой задержкой
-        // чтобы дать время боту отправить сообщение
+
         setTimeout(() => {
-          webApp.close()
-        }, 1000)
+          try {
+            webApp.close()
+          } finally {
+            setIsSelecting(false)
+          }
+        }, 900)
+      } else {
+        setIsSelecting(false)
+        setSelectedGirl(null)
       }
     } catch (error) {
-      console.error('Ошибка при выборе девочки:', error)
-      // Показываем ошибку пользователю
+      console.error('Ошибка при запуске общения с девушкой:', error)
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-        window.Telegram.WebApp.showAlert('Ошибка при выборе девочки. Попробуйте еще раз.')
+        window.Telegram.WebApp.showAlert('Не удалось начать общение. Попробуйте еще раз.')
       }
-      // Снимаем блокировку при ошибке
       setIsSelecting(false)
     }
+  }
+
+  const handleCloseGirlDetail = () => {
+    if (isSelecting) {
+      if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
+        window.Telegram.WebApp.showAlert('Подождите пару секунд, мы уже подключаем девушку')
+      }
+      return
+    }
+
+    setSelectedGirl(null)
   }
 
   if (loading) {
@@ -342,6 +426,27 @@ export default function Home() {
       name: pkg.name,
     }
   })
+
+  const getShortDescription = (description: string | null) => {
+    if (!description) return ''
+
+    const meaningfulWords = description
+      .split(/\s+/)
+      .map((word) => word.trim())
+      .map((word) => word.replace(/^[^A-Za-zА-Яа-яЁё0-9]+|[^A-Za-zА-Яа-яЁё0-9]+$/g, ''))
+      .filter(Boolean)
+      .filter((word) => !DESCRIPTION_STOP_WORDS.has(word.toLowerCase()))
+
+    if (meaningfulWords.length >= 2) {
+      return `${meaningfulWords[0]} ${meaningfulWords[1]}`
+    }
+
+    if (meaningfulWords.length === 1) {
+      return meaningfulWords[0]
+    }
+
+    return ''
+  }
 
   return (
     <div className={styles.container}>
@@ -398,35 +503,50 @@ export default function Home() {
           )}
           
           <div className={styles.girlsList}>
-            {girls.map((item) => (
-              <div
-                key={item.id}
-                className={styles.girlCard}
-                onClick={() => !isSelecting && handleGirlClick(item.id)}
-                style={
-                  isSelecting
-                    ? { opacity: 0.6, pointerEvents: 'none', cursor: 'not-allowed' }
-                    : {}
-                }
-              >
-                <div className={styles.girlPhoto}>
+            {girls.map((item) => {
+              const shortDescription = getShortDescription(item.description) || 'Очаровательная муза'
+
+              return (
+                <div
+                  key={item.id}
+                  className={styles.girlCard}
+                  onClick={() => handleGirlCardClick(item)}
+                  style={
+                    isSelecting
+                      ? { opacity: 0.6, pointerEvents: 'none', cursor: 'not-allowed' }
+                      : {}
+                  }
+                >
                   {item.photoUrl ? (
-                    <img src={item.photoUrl} alt={item.name} />
+                    <img
+                      src={item.photoUrl}
+                      alt={item.name}
+                      className={styles.girlBackground}
+                    />
                   ) : (
-                    <div className={styles.placeholderPhoto}>
+                    <div className={`${styles.girlBackground} ${styles.placeholderPhoto}`}>
                       <span>Фото</span>
                     </div>
                   )}
+                  <div className={styles.girlOverlay}>
+                    <h2 className={styles.girlName}>{item.name}</h2>
+                    <p className={styles.girlDescription}>{shortDescription}</p>
+                  </div>
                 </div>
-                <div className={styles.girlInfo}>
-                  <h2 className={styles.girlName}>{item.name}</h2>
-                  {item.description && (
-                    <p className={styles.girlDescription}>{item.description}</p>
-                  )}
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
+
+          {selectedGirl && (
+            <GirlDetailModal
+              girl={selectedGirl}
+              profile={GIRL_PROFILES[selectedGirl.id]}
+              teaser={getShortDescription(selectedGirl.description) || 'Всегда умеет удивить'}
+              onClose={handleCloseGirlDetail}
+              onStart={() => startConversationWithGirl(selectedGirl.id)}
+              isStarting={isSelecting}
+            />
+          )}
         </>
       )}
 
@@ -638,6 +758,138 @@ export default function Home() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+interface GirlDetailModalProps {
+  girl: Girl
+  profile?: GirlProfile
+  teaser: string
+  onClose: () => void
+  onStart: () => void
+  isStarting: boolean
+}
+
+function GirlDetailModal({ girl, profile, teaser, onClose, onStart, isStarting }: GirlDetailModalProps) {
+  const handleCardClick = (event: MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation()
+  }
+
+  const canRenderProfile = Boolean(profile)
+
+  return (
+    <div className={styles.girlDetailOverlay} onClick={onClose} role="dialog" aria-modal="true">
+      <div className={styles.girlDetailCard} onClick={handleCardClick}>
+        <button
+          type="button"
+          className={styles.girlDetailCloseButton}
+          onClick={onClose}
+          disabled={isStarting}
+          aria-label="Закрыть профиль"
+        >
+          ×
+        </button>
+
+        <div className={styles.girlDetailHero}>
+          <div className={styles.girlDetailPhoto}>
+            {girl.photoUrl ? (
+              <img src={girl.photoUrl} alt={girl.name} />
+            ) : (
+              <div className={styles.girlDetailPhotoPlaceholder}>
+                <span>{girl.name[0]}</span>
+              </div>
+            )}
+          </div>
+          <div className={styles.girlDetailInfo}>
+            {profile?.tagline ? (
+              <span className={styles.girlDetailTagline}>{profile.tagline}</span>
+            ) : (
+              <span className={styles.girlDetailTagline}>Всегда особенная</span>
+            )}
+            <h2 className={styles.girlDetailName}>{girl.name}</h2>
+            <div className={styles.girlDetailChips}>
+              {profile?.age ? <span className={styles.girlDetailChip}>{profile.age} лет</span> : null}
+              {profile?.archetype ? <span className={styles.girlDetailChip}>{profile.archetype}</span> : null}
+              {teaser ? <span className={styles.girlDetailChip}>{teaser}</span> : null}
+            </div>
+          </div>
+        </div>
+
+        <div className={styles.girlDetailSection}>
+          <div className={styles.girlDetailSectionTitle}>
+            <span>💫</span>
+            <h3>О ней</h3>
+          </div>
+          <p className={styles.girlDetailText}>
+            {profile?.personality || girl.description || 'Описание обновляется, но ты уже заинтересовал её.'}
+          </p>
+        </div>
+
+        {profile?.desires && (
+          <div className={styles.girlDetailSection}>
+            <div className={styles.girlDetailSectionTitle}>
+              <span>🔥</span>
+              <h3>Что она хочет</h3>
+            </div>
+            <p className={styles.girlDetailText}>{profile.desires}</p>
+          </div>
+        )}
+
+        {profile?.pleasures?.length ? (
+          <div className={styles.girlDetailSection}>
+            <div className={styles.girlDetailSectionTitle}>
+              <span>💖</span>
+              <h3>Её слабости</h3>
+            </div>
+            <ul className={styles.girlDetailList}>
+              {profile.pleasures.map((item) => (
+                <li key={item} className={styles.girlDetailListItem}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {profile?.conversationHooks?.length ? (
+          <div className={styles.girlDetailSection}>
+            <div className={styles.girlDetailSectionTitle}>
+              <span>🗝️</span>
+              <h3>Что обсудить с ней</h3>
+            </div>
+            <ul className={styles.girlDetailList}>
+              {profile.conversationHooks.map((item) => (
+                <li key={item} className={styles.girlDetailListItem}>
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        {profile?.openingLine && (
+          <div className={styles.girlDetailHighlight}>
+            <div className={styles.girlDetailHighlightTitle}>Фраза, чтобы растопить лёд</div>
+            <p className={styles.girlDetailHighlightText}>{profile.openingLine}</p>
+          </div>
+        )}
+
+        {canRenderProfile && profile?.funFact && (
+          <p className={styles.girlDetailFootnote}>💡 {profile.funFact}</p>
+        )}
+
+        <div className={styles.girlDetailActions}>
+          <button
+            type="button"
+            className={styles.girlDetailStartButton}
+            onClick={onStart}
+            disabled={isStarting}
+          >
+            {isStarting ? 'Запускаем общение...' : 'Начать общение'}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
