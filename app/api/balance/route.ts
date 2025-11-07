@@ -19,6 +19,12 @@ export async function GET(request: Request) {
       select: {
         id: true,
         messageBalance: true,
+        selectedGirl: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
       } as any, // Type assertion для временного обхода ошибки типов
     })
 
@@ -32,15 +38,33 @@ export async function GET(request: Request) {
         select: {
           id: true,
           messageBalance: true,
+          selectedGirl: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
         } as any, // Type assertion для временного обхода ошибки типов
       })
       return NextResponse.json({
         balance: (newUser as any).messageBalance ?? 10,
+        selectedGirl: (newUser as any).selectedGirl
+          ? {
+              id: (newUser as any).selectedGirl.id,
+              name: (newUser as any).selectedGirl.name,
+            }
+          : null,
       })
     }
 
     return NextResponse.json({
       balance: (user as any).messageBalance ?? 10,
+      selectedGirl: (user as any).selectedGirl
+        ? {
+            id: (user as any).selectedGirl.id,
+            name: (user as any).selectedGirl.name,
+          }
+        : null,
     })
   } catch (error) {
     console.error('Ошибка получения баланса:', error)

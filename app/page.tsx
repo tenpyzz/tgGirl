@@ -14,6 +14,11 @@ interface Girl {
   photoUrl: string | null
 }
 
+interface SelectedGirlSummary {
+  id: number
+  name: string
+}
+
 type Tab = 'main' | 'topup' | 'admin'
 
 const DESCRIPTION_STOP_WORDS = new Set([
@@ -93,6 +98,8 @@ export default function Home() {
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectedGirl, setSelectedGirl] = useState<Girl | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
+  const [currentGirl, setCurrentGirl] = useState<SelectedGirlSummary | null>(null)
+  const [isChangeMode, setIsChangeMode] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('main')
   const [isProcessingPayment, setIsProcessingPayment] = useState(false)
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'usd'>('stars')
@@ -198,6 +205,7 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json()
         setBalance(data.balance)
+        setCurrentGirl(data.selectedGirl ?? null)
       }
     } catch (error) {
       console.error('Ошибка загрузки баланса:', error)
@@ -300,6 +308,7 @@ export default function Home() {
       return
     }
 
+    setIsChangeMode(false)
     setSelectedGirl(girl)
 
     if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
@@ -312,6 +321,8 @@ export default function Home() {
   }
 
   const startConversationWithGirl = async (girlId: number) => {
+    const matchedGirl = girls.find((item) => item.id === girlId) || null
+
     if (isSelecting) {
       if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
         window.Telegram.WebApp.showAlert('Вы уже запускаете общение с выбранной девушкой')
@@ -359,6 +370,10 @@ export default function Home() {
           console.error('Ошибка отправки данных боту:', e)
         }
 
+        if (matchedGirl) {
+          setCurrentGirl({ id: matchedGirl.id, name: matchedGirl.name })
+        }
+        setIsChangeMode(false)
         setSelectedGirl(null)
 
         webApp.openTelegramLink(`https://t.me/${botUsername}`)
@@ -372,6 +387,10 @@ export default function Home() {
         }, 900)
       } else {
         setIsSelecting(false)
+        if (matchedGirl) {
+          setCurrentGirl({ id: matchedGirl.id, name: matchedGirl.name })
+        }
+        setIsChangeMode(false)
         setSelectedGirl(null)
       }
     } catch (error) {
@@ -485,6 +504,58 @@ export default function Home() {
         <>
           <h1 className={styles.title}>Выберите девушку</h1>
           
+          {currentGirl && (
+            <div className={styles.currentGirlCard}>
+              <div className={styles.currentGirlInfo}>
+                <span className={styles.currentGirlLabel}>Текущая муза</span>
+                <div className={styles.currentGirlName}>{currentGirl.name}</div>
+              </div>
+              <div className={styles.currentGirlActions}>
+                <button
+                  type="button"
+                  className={styles.currentGirlActionButton}
+                  onClick={() => {
+                    const girl = girls.find((item) => item.id === currentGirl.id)
+                    if (girl) {
+                      handleGirlCardClick(girl)
+                    }
+                  }}
+                >
+                  Посмотреть профиль
+                </button>
+                <button
+                  type="button"
+                  className={styles.changeGirlButton}
+                  onClick={() => {
+                    setIsChangeMode(true)
+                    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
+                      try {
+                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
+                      } catch (error) {
+                        console.warn('Haptic feedback недоступен:', error)
+                      }
+                    }
+                  }}
+                >
+                  Сменить девушку
+                </button>
+              </div>
+            </div>
+          )}
+
+          {isChangeMode && (
+            <div className={styles.changeGirlNotice}>
+              <span>Выберите новую девушку из списка ниже.</span>
+              <button
+                type="button"
+                className={styles.changeGirlCancelButton}
+                onClick={() => setIsChangeMode(false)}
+              >
+                Отмена
+              </button>
+            </div>
+          )}
+
           {balance !== null && (
             <div className={styles.balanceCard}>
               <div className={styles.balanceInfo}>
@@ -506,11 +577,12 @@ export default function Home() {
           <div className={styles.girlsList}>
             {girls.map((item) => {
               const shortDescription = getShortDescription(item.description) || 'Очаровательная муза'
+              const isCurrentGirl = currentGirl?.id === item.id
 
               return (
                 <div
                   key={item.id}
-                  className={styles.girlCard}
+                  className={`${styles.girlCard} ${isCurrentGirl ? styles.girlCardSelected : ''}`}
                   onClick={() => handleGirlCardClick(item)}
                   style={
                     isSelecting
@@ -518,6 +590,9 @@ export default function Home() {
                       : {}
                   }
                 >
+                  {isCurrentGirl && (
+                    <div className={styles.girlCardBadge}>Выбрана</div>
+                  )}
                   {item.photoUrl ? (
                     <Image
                       src={item.photoUrl}

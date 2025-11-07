@@ -40,6 +40,27 @@
   align-items: flex-end;
 }
 
+.girlCardSelected {
+  box-shadow: 0 12px 28px rgba(124, 58, 237, 0.35);
+  outline: 2px solid rgba(124, 58, 237, 0.6);
+}
+
+.girlCardBadge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(124, 58, 237, 0.9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  box-shadow: 0 6px 16px rgba(124, 58, 237, 0.35);
+}
+
 .girlCard::after {
   content: '';
   position: absolute;
@@ -110,11 +131,14 @@
   justify-content: center;
   padding: 16px;
   z-index: 200;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .girlDetailCard {
   width: 100%;
   max-width: 560px;
+  max-height: calc(100vh - 48px);
   background: #ffffff;
   border-radius: 24px 24px 16px 16px;
   padding: 24px;
@@ -124,6 +148,9 @@
   flex-direction: column;
   gap: 16px;
   animation: detailSlideUp 0.24s ease;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 @keyframes detailSlideUp {
@@ -410,6 +437,107 @@
   padding: 16px 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.currentGirlCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(135deg, rgba(236, 233, 254, 0.9) 0%, rgba(245, 238, 255, 0.95) 100%);
+  border-radius: 16px;
+  padding: 18px 20px;
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  box-shadow: 0 6px 18px rgba(124, 58, 237, 0.18);
+  margin-bottom: 16px;
+}
+
+.currentGirlInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #312e81;
+}
+
+.currentGirlLabel {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: #6d28d9;
+}
+
+.currentGirlName {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.currentGirlActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.currentGirlActionButton {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(99, 102, 241, 0.12);
+  color: #4338ca;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.currentGirlActionButton:hover {
+  background: rgba(99, 102, 241, 0.18);
+}
+
+.changeGirlButton {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #ec4899 0%, #7c3aed 100%);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(236, 72, 153, 0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.changeGirlButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(124, 58, 237, 0.32);
+}
+
+.changeGirlNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: rgba(236, 233, 254, 0.8);
+  border: 1px dashed rgba(124, 58, 237, 0.4);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: #4c1d95;
+  font-size: 14px;
+}
+
+.changeGirlCancelButton {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(124, 58, 237, 0.12);
+  color: #5b21b6;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.changeGirlCancelButton:hover {
+  background: rgba(124, 58, 237, 0.18);
 }
 
 .balanceInfo {
