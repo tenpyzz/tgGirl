@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getTelegramUserId } from '@/lib/telegram-utils'
 import { sendFirstMessageToUser } from '@/lib/bot-handlers'
+import { ensureDefaultGirls } from '@/lib/default-girls'
 
 export async function POST(request: Request) {
   try {
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
         { status: 401 }
       )
     }
+
+    await ensureDefaultGirls()
 
     // Проверяем, существует ли девочка
     const girl = await prisma.girl.findUnique({

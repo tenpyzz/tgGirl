@@ -13,6 +13,12 @@
   color: #333;
 }
 
+.girlsList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .loading,
 .error {
   text-align: center;

@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { ensureDefaultGirls } from '@/lib/default-girls'
 
 export async function GET() {
   try {
+    await ensureDefaultGirls()
+
     const girls = await prisma.girl.findMany({
       orderBy: {
         createdAt: 'asc',
