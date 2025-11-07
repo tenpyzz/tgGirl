@@ -572,13 +572,11 @@ ${girl.systemPrompt}`
 
   const response = responseContent.trim()
 
-  const lines = response
+  const dialogLineCandidate = response
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-
-  const actionLine = lines.find((line) => line.startsWith('*')) || '*Я слегка прижимаю телефон к вам, чтобы вы видели каждый сантиметр*'
-  const dialogLineCandidate = lines.find((line) => !line.startsWith('*')) || 'Вот это фото я сделала специально для тебя.'
+    .find((line) => !line.startsWith('*')) || 'Это фото я сделала специально для тебя.'
 
   const dialogWords = dialogLineCandidate.split(/\s+/)
   let dialogLine = dialogWords.length > 12 ? dialogWords.slice(0, 12).join(' ') : dialogLineCandidate
@@ -586,7 +584,7 @@ ${girl.systemPrompt}`
     dialogLine += '.'
   }
 
-  const finalResponse = `${actionLine}\n\n${dialogLine}`
+  const finalResponse = dialogLine
 
   await prisma.message.create({
     data: {
