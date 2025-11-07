@@ -828,6 +828,18 @@ export default function Home() {
                           <span className={styles.infoLabel}>Платежей:</span>
                           <span className={styles.infoValue}>{user.paymentsCount}</span>
                         </div>
+                  <div className={styles.userCardActions}>
+                    <button
+                      type="button"
+                      className={styles.userCardButton}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setSelectedUserId(user.id)
+                      }}
+                    >
+                      Выдать сообщения
+                    </button>
+                  </div>
                       </div>
                     </div>
                   ))

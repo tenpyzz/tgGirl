@@ -44,6 +44,8 @@ export async function POST(request: Request) {
       where: { telegramId: BigInt(telegramUserId) },
     })
 
+    const previousSelectedGirlId = user?.selectedGirlId ?? null
+
     if (!user) {
       user = await prisma.user.create({
         data: {
@@ -63,7 +65,10 @@ export async function POST(request: Request) {
     // Пытаемся отправить первое сообщение пользователю
     // Это работает, если пользователь уже писал боту (бот знает его chatId)
     try {
-      await sendFirstMessageToUser(telegramUserId)
+      const forceFirstMessage = previousSelectedGirlId !== girlId
+      await sendFirstMessageToUser(telegramUserId, {
+        force: forceFirstMessage,
+      })
     } catch (error) {
       console.error('Ошибка отправки первого сообщения:', error)
       // Не блокируем ответ, если не удалось отправить сообщение

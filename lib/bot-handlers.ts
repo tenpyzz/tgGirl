@@ -47,7 +47,12 @@ async function getOrCreateUser(telegramId: number, username?: string, firstName?
 }
 
 // Экспортируемая функция для отправки первого сообщения пользователю (для использования в API)
-export async function sendFirstMessageToUser(telegramUserId: number): Promise<boolean> {
+export async function sendFirstMessageToUser(
+  telegramUserId: number,
+  options?: {
+    force?: boolean
+  }
+): Promise<boolean> {
   try {
     console.log(`[sendFirstMessageToUser] Попытка отправить первое сообщение пользователю telegramId: ${telegramUserId}`)
     
@@ -83,9 +88,11 @@ export async function sendFirstMessageToUser(telegramUserId: number): Promise<bo
       },
     })
 
-    // Если уже есть сообщения, не отправляем
-    if (chat && chat.messages.length > 0) {
-      console.log(`[sendFirstMessageToUser] У пользователя уже есть сообщения от девочки`)
+    const hasAssistantMessages = chat && chat.messages.length > 0
+
+    // Если уже есть сообщения и нет принудительного режима, не отправляем
+    if (hasAssistantMessages && !options?.force) {
+      console.log(`[sendFirstMessageToUser] У пользователя уже есть сообщения от девочки (force=false)`)
       return false
     }
 
