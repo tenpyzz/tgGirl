@@ -1,9 +1,13 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import { getGirlPhotoPath } from '@/lib/default-girls'
 
-export async function GET(_request: NextRequest, { params }: { params: { girlId: string } }) {
-  const girlId = Number(params.girlId)
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ girlId: string }> }
+) {
+  const { girlId: girlIdParam } = await params
+  const girlId = Number(girlIdParam)
 
   if (!Number.isInteger(girlId)) {
     return NextResponse.json({ error: 'Некорректный ID' }, { status: 400 })
