@@ -53,6 +53,14 @@ async function ensureSharedPhotoFiles(): Promise<string[]> {
   return sharedPhotoFilesCache
 }
 
+function createPhotoInput(filePath: string, contentType: string) {
+  return {
+    source: createReadStream(filePath),
+    filename: path.basename(filePath),
+    contentType,
+  }
+}
+
 async function getRandomSharedPhoto(): Promise<{ filePath: string; contentType: string } | null> {
   const files = await ensureSharedPhotoFiles()
 
