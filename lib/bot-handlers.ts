@@ -646,10 +646,9 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           const girl = updatedUser.selectedGirl
           console.log('Девочка выбрана:', girl.name, 'ID:', updatedUser.selectedGirlId)
           
-          // Пробуем отправить первое сообщение от девочки вместе с фото
           try {
-            console.log('Пытаемся отправить первое сообщение с фото...')
-            const sent = await sendFirstMessageToUser(telegramUserId)
+            console.log('Пытаемся отправить первое сообщение с фото (force=true)...')
+            const sent = await sendFirstMessageToUser(telegramUserId, { force: true })
             if (sent) {
               console.log('Первое сообщение отправлено успешно')
               return
@@ -657,16 +656,16 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           } catch (aiError) {
             console.error('Ошибка генерации первого сообщения:', aiError)
           }
-          
+
           if (girl) {
             await bot.sendMessage(
               chatId,
               `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
             )
           }
-          
+
           return // Не обрабатываем это сообщение дальше
-          
+
         } else {
           console.log('Девочка не выбрана или не найдена')
         }
@@ -848,42 +847,21 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
         if (user.selectedGirlId && user.selectedGirl) {
           const girl = user.selectedGirl
           
-          // Проверяем, есть ли уже сообщения в чате
-          const chat = await prisma.chat.findUnique({
-            where: {
-              userId_girlId: {
-                userId: user.id,
-                girlId: user.selectedGirlId,
-              },
-            },
-            include: {
-              messages: {
-                orderBy: {
-                  createdAt: 'desc',
-                },
-                take: 1,
-              },
-            },
-          })
-          
-          // Если это первое сообщение в чате, отправляем первое сообщение в формате ролевой игры
-          if (!chat || chat.messages.length === 0) {
-            try {
-              const sent = await sendFirstMessageToUser(telegramUserId)
-              if (!sent) {
-                await bot.sendMessage(
-                  chatId,
-                  `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
-                )
-              }
-            } catch (aiError) {
-              console.error('Ошибка генерации первого сообщения:', aiError)
-              // Если ошибка, отправляем стандартное приветствие
+          try {
+            const sent = await sendFirstMessageToUser(telegramUserId, { force: true })
+            if (!sent) {
               await bot.sendMessage(
                 chatId,
                 `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
               )
             }
+          } catch (aiError) {
+            console.error('Ошибка генерации первого сообщения:', aiError)
+            // Если ошибка, отправляем стандартное приветствие
+            await bot.sendMessage(
+              chatId,
+              `Привет! Я ${girl.name} 👋\n\nДавай общаться! Напиши мне что-нибудь.`
+            )
           }
         }
         
