@@ -30,6 +30,7 @@ export async function GET(request: Request) {
         usdAmount: true,
         paymentMethod: true,
         messages: true,
+        photos: true,
         createdAt: true,
       },
     })
@@ -40,6 +41,7 @@ export async function GET(request: Request) {
       totalStars: allPayments.reduce((sum, p) => sum + ((p as any).stars || 0), 0),
       totalUsd: allPayments.reduce((sum, p) => sum + ((p as any).usdAmount || 0), 0),
       totalMessages: allPayments.reduce((sum, p) => sum + p.messages, 0),
+      totalPhotos: allPayments.reduce((sum, p) => sum + ((p as any).photos || 0), 0),
       starsPayments: allPayments.filter(p => (p as any).paymentMethod === 'stars').length,
       usdPayments: allPayments.filter(p => (p as any).paymentMethod === 'usd').length,
     }

@@ -52,6 +52,9 @@ export async function POST(request: Request) {
         messageBalance: {
           increment: pkg.messages,
         },
+        photoBalance: {
+          increment: pkg.photos,
+        },
       } as any,
     })
 
@@ -66,6 +69,7 @@ export async function POST(request: Request) {
         packageId: packageId,
         packageName: pkg.name,
         messages: pkg.messages,
+        photos: pkg.photos,
         paymentMethod: paymentMethod,
         stars: stars,
         usdAmount: usdAmount,
@@ -73,6 +77,7 @@ export async function POST(request: Request) {
           packageId, 
           userId: telegramUserId, 
           messages: pkg.messages,
+          photos: pkg.photos,
           paymentMethod 
         }),
       },
@@ -81,7 +86,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       balance: (updatedUser as any).messageBalance,
+      photoBalance: (updatedUser as any).photoBalance,
       addedMessages: pkg.messages,
+      addedPhotos: pkg.photos,
     })
   } catch (error) {
     console.error('Ошибка обработки платежа:', error)

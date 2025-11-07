@@ -63,6 +63,7 @@ export async function GET(request: Request) {
       lastName: user.lastName,
       fullName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Без имени',
       messageBalance: (user as any).messageBalance ?? 0,
+      photoBalance: (user as any).photoBalance ?? 0,
       selectedGirl: user.selectedGirl ? {
         id: user.selectedGirl.id,
         name: user.selectedGirl.name,

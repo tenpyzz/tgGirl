@@ -19,6 +19,7 @@ export async function GET(request: Request) {
       select: {
         id: true,
         messageBalance: true,
+        photoBalance: true,
         selectedGirl: {
           select: {
             id: true,
@@ -34,10 +35,12 @@ export async function GET(request: Request) {
         data: {
           telegramId: BigInt(telegramUserId),
           messageBalance: 10,
+          photoBalance: 1,
         } as any, // Type assertion для временного обхода ошибки типов
         select: {
           id: true,
           messageBalance: true,
+          photoBalance: true,
           selectedGirl: {
             select: {
               id: true,
@@ -48,6 +51,7 @@ export async function GET(request: Request) {
       })
       return NextResponse.json({
         balance: (newUser as any).messageBalance ?? 10,
+        photoBalance: (newUser as any).photoBalance ?? 1,
         selectedGirl: (newUser as any).selectedGirl
           ? {
               id: (newUser as any).selectedGirl.id,
@@ -59,6 +63,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       balance: (user as any).messageBalance ?? 10,
+      photoBalance: (user as any).photoBalance ?? 1,
       selectedGirl: (user as any).selectedGirl
         ? {
             id: (user as any).selectedGirl.id,

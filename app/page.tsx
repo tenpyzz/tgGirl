@@ -82,6 +82,7 @@ interface User {
   lastName: string | null
   fullName: string
   messageBalance: number
+  photoBalance: number
   selectedGirl: {
     id: number
     name: string
@@ -98,6 +99,7 @@ export default function Home() {
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectedGirl, setSelectedGirl] = useState<Girl | null>(null)
   const [balance, setBalance] = useState<number | null>(null)
+  const [photoBalance, setPhotoBalance] = useState<number | null>(null)
   const [currentGirl, setCurrentGirl] = useState<SelectedGirlSummary | null>(null)
   const [isChangeMode, setIsChangeMode] = useState(false)
   const [activeTab, setActiveTab] = useState<Tab>('main')
@@ -120,6 +122,7 @@ export default function Home() {
     totalStars: number
     totalUsd: number
     totalMessages: number
+    totalPhotos: number
     starsPayments: number
     usdPayments: number
   } | null>(null)
@@ -205,6 +208,7 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json()
         setBalance(data.balance)
+        setPhotoBalance(data.photoBalance ?? 0)
         setCurrentGirl(data.selectedGirl ?? null)
       }
     } catch (error) {
@@ -437,6 +441,7 @@ export default function Home() {
     return {
       id: packageId,
       messages: pkg.messages,
+      photos: pkg.photos,
       stars: pkg.stars,
       oldStars: pkg.oldStars,
       usdPrice: usdPrice,
@@ -556,21 +561,32 @@ export default function Home() {
             </div>
           )}
 
-          {balance !== null && (
+          {(balance !== null || photoBalance !== null) && (
             <div className={styles.balanceCard}>
-              <div className={styles.balanceInfo}>
-                <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
-                <div className={styles.balanceValueContainer}>
-                  <span className={styles.balanceValue}>{balance}</span>
-                  <button
-                    className={styles.balanceAddButton}
-                    onClick={() => setActiveTab('topup')}
-                    title="Пополнить баланс"
-                  >
-                    ➕
-                  </button>
+              {balance !== null && (
+                <div className={styles.balanceInfo}>
+                  <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
+                  <div className={styles.balanceValueContainer}>
+                    <span className={styles.balanceValue}>{balance}</span>
+                    <button
+                      className={styles.balanceAddButton}
+                      onClick={() => setActiveTab('topup')}
+                      title="Пополнить баланс"
+                    >
+                      ➕
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
+
+              {photoBalance !== null && (
+                <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
+                  <span className={styles.balanceLabel}>📸 Доступно фото:</span>
+                  <div className={styles.balanceValueContainer}>
+                    <span className={styles.balanceValue}>{photoBalance}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           
@@ -634,12 +650,20 @@ export default function Home() {
         <>
           <h1 className={styles.title}>Пополнение баланса</h1>
           
-          {balance !== null && (
+          {(balance !== null || photoBalance !== null) && (
             <div className={styles.balanceCard}>
-              <div className={styles.balanceInfo}>
-                <span className={styles.balanceLabel}>💬 Текущий баланс:</span>
-                <span className={styles.balanceValue}>{balance}</span>
-              </div>
+              {balance !== null && (
+                <div className={styles.balanceInfo}>
+                  <span className={styles.balanceLabel}>💬 Текущий баланс:</span>
+                  <span className={styles.balanceValue}>{balance}</span>
+                </div>
+              )}
+              {photoBalance !== null && (
+                <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
+                  <span className={styles.balanceLabel}>📸 Доступно фото:</span>
+                  <span className={styles.balanceValue}>{photoBalance}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -676,7 +700,10 @@ export default function Home() {
                       -{pkg.discount}%
                     </div>
                   </div>
-                  <div className={styles.packageMessages}>{pkg.messages} сообщений</div>
+                  <div className={styles.packageStats}>
+                    <div className={styles.packageMessages}>💬 {pkg.messages} сообщений</div>
+                    <div className={styles.packagePhotos}>📸 {pkg.photos} фото</div>
+                  </div>
                 </div>
                 <div className={styles.packagePriceContainer}>
                   <div className={styles.packagePrice}>
@@ -765,6 +792,14 @@ export default function Home() {
                       <div className={styles.statValue}>${adminStats.totalUsd.toFixed(2)}</div>
                       <div className={styles.statLabel}>💵 USD получено</div>
                     </div>
+                    <div className={styles.statCard}>
+                      <div className={styles.statValue}>{adminStats.totalMessages.toLocaleString()}</div>
+                      <div className={styles.statLabel}>💬 Сообщений выдано</div>
+                    </div>
+                    <div className={styles.statCard}>
+                      <div className={styles.statValue}>{adminStats.totalPhotos.toLocaleString()}</div>
+                      <div className={styles.statLabel}>📸 Фото выдано</div>
+                    </div>
                   </>
                 )}
               </div>
@@ -811,6 +846,10 @@ export default function Home() {
                           <span className={styles.infoLabel}>Баланс:</span>
                           <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
                         </div>
+                        <div className={styles.infoRow}>
+                          <span className={styles.infoLabel}>Фото:</span>
+                          <span className={styles.infoValue}>{user.photoBalance} фото</span>
+                        </div>
                         
                         {user.selectedGirl && (
                           <div className={styles.infoRow}>
@@ -837,7 +876,7 @@ export default function Home() {
                         setSelectedUserId(user.id)
                       }}
                     >
-                      Выдать сообщения
+                      Пополнить баланс
                     </button>
                   </div>
                       </div>
@@ -998,6 +1037,7 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'info' | 'chats' | 'payments'>('info')
   const [grantAmount, setGrantAmount] = useState<string>('')
+  const [grantPhotoAmount, setGrantPhotoAmount] = useState<string>('')
   const [grantReason, setGrantReason] = useState<string>('')
   const [grantLoading, setGrantLoading] = useState(false)
   const [grantError, setGrantError] = useState<string | null>(null)
@@ -1006,6 +1046,7 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
   useEffect(() => {
     fetchUser()
     setGrantAmount('')
+    setGrantPhotoAmount('')
     setGrantReason('')
     setGrantError(null)
     setGrantSuccess(null)
@@ -1044,10 +1085,14 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
     setGrantError(null)
     setGrantSuccess(null)
 
-    const parsedAmount = parseInt(grantAmount, 10)
+    const parsedMessages = parseInt(grantAmount, 10)
+    const parsedPhotos = parseInt(grantPhotoAmount, 10)
 
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setGrantError('Введите положительное целое число сообщений')
+    const hasMessages = !isNaN(parsedMessages) && parsedMessages > 0
+    const hasPhotos = !isNaN(parsedPhotos) && parsedPhotos > 0
+
+    if (!hasMessages && !hasPhotos) {
+      setGrantError('Введите положительное число сообщений и/или фото')
       return
     }
 
@@ -1060,7 +1105,11 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
           'Content-Type': 'application/json',
           ...(initData ? { 'x-telegram-init-data': initData } : {}),
         },
-        body: JSON.stringify({ amount: parsedAmount, reason: grantReason }),
+        body: JSON.stringify({
+          ...(hasMessages ? { amount: parsedMessages } : {}),
+          ...(hasPhotos ? { photoAmount: parsedPhotos } : {}),
+          reason: grantReason,
+        }),
       })
 
       let data: any = null
@@ -1077,8 +1126,20 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
 
       await fetchUser()
       setGrantAmount('')
+      setGrantPhotoAmount('')
       setGrantReason('')
-      setGrantSuccess(`Добавлено ${data?.granted ?? parsedAmount} сообщений`)
+      const grantedMessages = data?.grantedMessages ?? (hasMessages ? parsedMessages : 0)
+      const grantedPhotos = data?.grantedPhotos ?? (hasPhotos ? parsedPhotos : 0)
+
+      const parts: string[] = []
+      if (grantedMessages > 0) {
+        parts.push(`${grantedMessages} сообщений`)
+      }
+      if (grantedPhotos > 0) {
+        parts.push(`${grantedPhotos} фото`)
+      }
+
+      setGrantSuccess(`Добавлено ${parts.join(' и ')}`)
     } catch (err) {
       console.error('Ошибка ручного начисления сообщений пользователю:', err)
       setGrantError('Произошла ошибка. Попробуйте еще раз.')
@@ -1139,6 +1200,10 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
                 <span className={styles.infoLabel}>Баланс:</span>
                 <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
               </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Фото:</span>
+                <span className={styles.infoValue}>{user.photoBalance} фото</span>
+              </div>
               {user.selectedGirl && (
                 <div className={styles.infoItem}>
                   <span className={styles.infoLabel}>Девушка:</span>
@@ -1152,6 +1217,10 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Сообщений:</span>
                 <span className={styles.infoValue}>{user.stats.totalMessages}</span>
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Фото выдано:</span>
+                <span className={styles.infoValue}>{user.stats.totalPhotosBought}</span>
               </div>
               <div className={styles.infoItem}>
                 <span className={styles.infoLabel}>Платежей:</span>
@@ -1170,9 +1239,9 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
             </div>
 
             <div className={styles.grantCard}>
-              <h3>Выдать сообщения</h3>
+              <h3>Пополнить баланс вручную</h3>
               <p className={styles.grantDescription}>
-                Начислите дополнительные сообщения вручную. Пользователь получит уведомление от бота при следующем использовании.
+                Начислите дополнительные сообщения и/или фото вручную. Пользователь получит уведомление от бота при следующем использовании.
               </p>
               <form className={styles.grantForm} onSubmit={handleGrantMessages}>
                 <div className={styles.grantRow}>
@@ -1183,6 +1252,15 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
                     placeholder="Количество сообщений"
                     value={grantAmount}
                     onChange={(event) => setGrantAmount(event.target.value)}
+                    disabled={grantLoading}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    className={styles.grantInput}
+                    placeholder="Количество фото"
+                    value={grantPhotoAmount}
+                    onChange={(event) => setGrantPhotoAmount(event.target.value)}
                     disabled={grantLoading}
                   />
                   <button
@@ -1245,6 +1323,7 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
                   </div>
                   <div className={styles.paymentInfo}>
                     <div>Сообщений: {payment.messages}</div>
+                    {payment.photos > 0 && <div>Фото: {payment.photos}</div>}
                     {payment.paymentMethod === 'stars' && (
                       <div>Звезд: {payment.stars} ⭐</div>
                     )}

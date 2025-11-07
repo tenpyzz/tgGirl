@@ -97,6 +97,7 @@ export async function GET(
       lastName: user.lastName,
       fullName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Без имени',
       messageBalance: (user as any).messageBalance ?? 0,
+      photoBalance: (user as any).photoBalance ?? 0,
       selectedGirl: user.selectedGirl,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),
@@ -118,6 +119,7 @@ export async function GET(
         packageId: payment.packageId,
         packageName: payment.packageName,
         messages: payment.messages,
+        photos: (payment as any).photos ?? 0,
         paymentMethod: (payment as any).paymentMethod || 'stars',
         stars: (payment as any).stars,
         usdAmount: (payment as any).usdAmount,
@@ -130,6 +132,7 @@ export async function GET(
         totalStarsSpent: user.payments.reduce((sum, payment) => sum + ((payment as any).stars || 0), 0),
         totalUsdSpent: user.payments.reduce((sum, payment) => sum + ((payment as any).usdAmount || 0), 0),
         totalMessagesBought: user.payments.reduce((sum, payment) => sum + payment.messages, 0),
+        totalPhotosBought: user.payments.reduce((sum, payment) => sum + ((payment as any).photos || 0), 0),
       },
     }
 
@@ -177,26 +180,44 @@ export async function POST(
       )
     }
 
-    const amount = Number(body?.amount)
+    const amountRaw = body?.amount
+    const photoAmountRaw = body?.photoAmount
     const reason = typeof body?.reason === 'string' ? body.reason.trim() : ''
 
-    if (!Number.isInteger(amount) || amount <= 0) {
+    const amount = Number(amountRaw)
+    const photoAmount = Number(photoAmountRaw)
+
+    const hasMessages = Number.isInteger(amount) && amount > 0
+    const hasPhotos = Number.isInteger(photoAmount) && photoAmount > 0
+
+    if (!hasMessages && !hasPhotos) {
       return NextResponse.json(
-        { error: 'Количество сообщений должно быть положительным целым числом' },
+        { error: 'Введите положительное число сообщений и/или фото' },
         { status: 400 }
       )
     }
 
+    const updateData: any = {}
+
+    if (hasMessages) {
+      updateData.messageBalance = {
+        increment: amount,
+      }
+    }
+
+    if (hasPhotos) {
+      updateData.photoBalance = {
+        increment: photoAmount,
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: userId },
-      data: {
-        messageBalance: {
-          increment: amount,
-        },
-      },
+      data: updateData,
       select: {
         id: true,
         messageBalance: true,
+        photoBalance: true,
       },
     })
 
@@ -210,7 +231,8 @@ export async function POST(
           userId: userId,
           packageId: 0,
           packageName,
-          messages: amount,
+          messages: hasMessages ? amount : 0,
+          photos: hasPhotos ? photoAmount : 0,
           paymentMethod: 'manual',
           stars: null,
           usdAmount: null,
@@ -224,8 +246,10 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      granted: amount,
+      grantedMessages: hasMessages ? amount : 0,
+      grantedPhotos: hasPhotos ? photoAmount : 0,
       balance: updatedUser.messageBalance,
+      photoBalance: (updatedUser as any).photoBalance ?? 0,
     })
   } catch (error) {
     console.error('Ошибка при ручном начислении сообщений пользователю:', error)

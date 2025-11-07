@@ -563,6 +563,10 @@
   gap: 12px;
 }
 
+.balanceInfoSecondary {
+  margin-top: 12px;
+}
+
 .balanceAddButton {
   background: rgba(255, 255, 255, 0.2);
   border: 2px solid rgba(255, 255, 255, 0.3);
@@ -745,7 +749,15 @@
   box-shadow: 0 2px 4px rgba(255, 107, 107, 0.3);
 }
 
-.packageMessages {
+.packageStats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+
+.packageMessages,
+.packagePhotos {
   font-size: 14px;
   color: #666;
   font-weight: 500;

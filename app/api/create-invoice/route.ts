@@ -54,11 +54,12 @@ export async function POST(request: Request) {
       },
       body: JSON.stringify({
         title: `Пополнение баланса - ${pkg.name}`,
-        description: `Пополнение баланса на ${pkg.messages} сообщений`,
+        description: `Пополнение баланса: +${pkg.messages} сообщений и +${pkg.photos} фото`,
         payload: JSON.stringify({
           packageId,
           userId: telegramUserId,
           messages: pkg.messages,
+          photos: pkg.photos,
           paymentMethod, // Сохраняем метод оплаты в payload
         }),
         provider_token: '', // Не требуется для Telegram Stars и USD
@@ -90,6 +91,7 @@ export async function POST(request: Request) {
       invoiceUrl: data.result,
       packageId,
       messages: pkg.messages,
+      photos: pkg.photos,
       stars: paymentMethod === 'stars' ? pkg.stars : null,
       usdAmount: paymentMethod === 'usd' ? usdPrice : null,
       paymentMethod,

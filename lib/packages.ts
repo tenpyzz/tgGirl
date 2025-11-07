@@ -7,6 +7,7 @@ const STAR_TO_USD_RATE = 4.84 / 250 // = 0.01936
 export const PACKAGES = {
   1: { 
     messages: 200, 
+    photos: 5,
     stars: 249, 
     oldStars: 349, 
     discount: 29, 
@@ -15,6 +16,7 @@ export const PACKAGES = {
   },
   2: { 
     messages: 1000, 
+    photos: 20,
     stars: 999, 
     oldStars: 1299, 
     discount: 23, 
@@ -23,6 +25,7 @@ export const PACKAGES = {
   },
   3: { 
     messages: 3000, 
+    photos: 50,
     stars: 2499, 
     oldStars: 2999, 
     discount: 17, 

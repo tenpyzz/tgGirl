@@ -19,6 +19,7 @@ model User {
   lastName      String?
   selectedGirlId Int?    // ID выбранной девочки
   messageBalance Int     @default(10) // Количество доступных сообщений
+  photoBalance   Int     @default(1)  // Количество доступных фото
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
@@ -87,6 +88,7 @@ model PaymentHistory {
   packageId     Int      // ID пакета пополнения (1, 2, 3)
   packageName   String   // Название пакета (Базовый, Стандартный, Премиум)
   messages      Int      // Количество сообщений, добавленных в баланс
+  photos        Int      @default(0) // Количество фото, добавленных в баланс
   paymentMethod String   @default("stars") // Метод оплаты: "stars" или "usd"
   stars         Int?     // Количество Telegram Stars, потраченных на оплату (null для USD)
   usdAmount     Float?   // Сумма в долларах (null для Stars)

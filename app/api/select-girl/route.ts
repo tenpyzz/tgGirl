@@ -52,6 +52,7 @@ export async function POST(request: Request) {
           telegramId: BigInt(telegramUserId),
           selectedGirlId: girlId,
           messageBalance: 10, // Начальный баланс - 10 бесплатных сообщений
+          photoBalance: 1, // Начальный баланс фото
         } as any, // Type assertion для временного обхода ошибки типов
       })
     } else {

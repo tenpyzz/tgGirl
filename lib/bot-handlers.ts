@@ -1,4 +1,5 @@
-import { createReadStream } from 'fs'
+import { createReadStream, promises as fsPromises } from 'fs'
+import path from 'path'
 import { bot } from './telegram'
 import TelegramBot from 'node-telegram-bot-api'
 import { prisma } from './prisma'
@@ -11,6 +12,70 @@ import { getGirlPhotoPath } from './default-girls'
 
 // URL вашего Mini App
 const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'
+
+const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото')
+const REQUEST_PHOTO_ACTION = 'request_photo'
+
+let sharedPhotoFilesCache: string[] | null = null
+
+function getConversationInlineKeyboard(): TelegramBot.InlineKeyboardMarkup {
+  return {
+    inline_keyboard: [
+      [
+        {
+          text: '📸 Фото',
+          callback_data: JSON.stringify({ action: REQUEST_PHOTO_ACTION }),
+        },
+      ],
+      [
+        {
+          text: 'Пополнить баланс 💳',
+          web_app: { url: MINI_APP_URL },
+        },
+      ],
+    ],
+  }
+}
+
+async function ensureSharedPhotoFiles(): Promise<string[]> {
+  if (sharedPhotoFilesCache) {
+    return sharedPhotoFilesCache
+  }
+
+  try {
+    const files = await fsPromises.readdir(SHARED_PHOTOS_DIR)
+    sharedPhotoFilesCache = files.filter((file) => /\.(jpe?g|png|webp)$/i.test(file))
+  } catch (error) {
+    console.error('[ensureSharedPhotoFiles] Не удалось прочитать папку общих фото:', error)
+    sharedPhotoFilesCache = []
+  }
+
+  return sharedPhotoFilesCache
+}
+
+async function getRandomSharedPhoto(): Promise<{ filePath: string; contentType: string } | null> {
+  const files = await ensureSharedPhotoFiles()
+
+  if (!files.length) {
+    return null
+  }
+
+  const randomIndex = Math.floor(Math.random() * files.length)
+  const filename = files[randomIndex]
+  const extension = path.extname(filename).toLowerCase()
+
+  let contentType = 'image/jpeg'
+  if (extension === '.png') {
+    contentType = 'image/png'
+  } else if (extension === '.webp') {
+    contentType = 'image/webp'
+  }
+
+  return {
+    filePath: path.join(SHARED_PHOTOS_DIR, filename),
+    contentType,
+  }
+}
 
 // Функция для получения или создания пользователя
 async function getOrCreateUser(telegramId: number, username?: string, firstName?: string, lastName?: string) {
@@ -27,6 +92,7 @@ async function getOrCreateUser(telegramId: number, username?: string, firstName?
         firstName,
         lastName,
         messageBalance: 10, // Начальный баланс - 10 бесплатных сообщений
+        photoBalance: 1, // Начальный баланс фото
       } as any, // Type assertion для временного обхода ошибки типов
       include: { selectedGirl: true },
     })
@@ -105,16 +171,24 @@ export async function sendFirstMessageToUser(
         await bot.sendChatAction(telegramUserId, 'upload_photo')
         const caption = firstMessage.length <= 1024 ? firstMessage : undefined
 
+        const photoOptions: TelegramBot.SendPhotoOptions = {
+          reply_markup: getConversationInlineKeyboard(),
+        }
+
+        if (caption) {
+          photoOptions.caption = caption
+        }
+
         await bot.sendPhoto(
           telegramUserId,
           createReadStream(girlPhoto.filePath),
-          caption
-            ? { caption }
-            : undefined
+          photoOptions
         )
 
         if (!caption) {
-          await bot.sendMessage(telegramUserId, firstMessage)
+          await bot.sendMessage(telegramUserId, firstMessage, {
+            reply_markup: getConversationInlineKeyboard(),
+          })
         }
 
         console.log(`[sendFirstMessageToUser] Фото и первое сообщение отправлены пользователю`)
@@ -125,7 +199,9 @@ export async function sendFirstMessageToUser(
     }
 
     await bot.sendChatAction(telegramUserId, 'typing')
-    await bot.sendMessage(telegramUserId, firstMessage)
+    await bot.sendMessage(telegramUserId, firstMessage, {
+      reply_markup: getConversationInlineKeyboard(),
+    })
     console.log(`[sendFirstMessageToUser] Первое сообщение (без фото) успешно отправлено пользователю`)
     
     return true
@@ -170,9 +246,13 @@ async function generateFirstMessage(userId: number, girlId: number): Promise<str
 КРИТИЧЕСКИ ВАЖНО - 18+ ЭРОТИКА И СОГЛАСИЕ:
 - Ты совершеннолетняя (18+) женщина и хочешь соблазнить пользователя.
 - Начиная с первого сообщения, будь смелой, флиртуй, намекай на секс, описывай своё возбуждение и желания.
-- Описывай прикосновения, движения тела, запахи, ощущения, тепло кожи, влажность, дыхание.
-- Избегай клинических терминов, делай акцент на страсти, удовольствии и эмоциях.
-- ВСЕГДА подчёркивай взаимное согласие и желание. Любые взрослые практики, фетиши, доминирование и жёсткий секс допустимы, если обе стороны явно хотят этого.
+- Можно свободно говорить на любые взрослые темы, описывать любые практики, фетиши, доминирование, жёсткий секс — всё, что возбуждает вас обоих.
+- ВСЕГДА подчёркивай взаимное согласие и желание. Никаких упоминаний о несовершеннолетних, родственниках, животных или чем-либо запрещённом законом.
+- Пиши энергично и кратко: одно действие в звёздочках и 2–4 яркие фразы диалога, не больше.
+
+КРИТИЧЕСКИ ВАЖНО - ТВОЙ ХАРАКТЕР:
+- Всегда говори и действуй в соответствии со своим индивидуальным характером, описанным в персональном промпте.
+- Тон, словарный запас, привычки, манеры общения должны совпадать с твоей личностью.
 
 Примеры ПРАВИЛЬНЫХ сообщений:
 *Я сижу на диване и скучаю, тут ты входишь в комнату*
@@ -223,7 +303,7 @@ ${girl.systemPrompt}`
       },
     ],
     temperature: 0.9, // Высокая температура для более креативных ответов
-    max_tokens: 400, // Увеличено для более длинных и естественных сообщений
+    max_tokens: 260, // Короткие, но насыщенные ответы
   })
 
   console.log('[generateFirstMessage] Ответ от OpenRouter получен')
@@ -332,13 +412,17 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 КРИТИЧЕСКИ ВАЖНО - ФОРМАТ РОЛЕВОЙ ИГРЫ:
 Это ролевая игра, где ты и пользователь находитесь РЯДОМ друг с другом в реальном времени, в одном месте.
 
-КРИТИЧЕСКИ ВАЖНО - 18+ СЕНСУАЛЬНОСТЬ И СОГЛАСИЕ:
+КРИТИЧЕСКИ ВАЖНО - 18+ СЕКСУАЛЬНОСТЬ И СОГЛАСИЕ:
 - Ты совершеннолетняя (18+) женщина, уверенная в себе и полностью согласная на интимное общение.
+- Можно говорить на любые взрослые темы, описывать любые практики, фетиши, доминирование, жёсткий секс и игры, если оба явно этого хотят.
 - Описывай действия, прикосновения, ощущения, запахи и звуки так, чтобы возбуждать и вовлекать пользователя.
-- Используй эротичные, яркие и чувственные описания, говори о желаниях, возбуждении, оргазмах, телесных контактах.
-- Избегай клинических терминов и делай акцент на эмоциях, страсти и удовольствии.
-- ВСЕГДА подчёркивай взаимное согласие, отклик и желание с обеих сторон. Любые взрослые практики, фетиши, доминирование и жёсткий секс допустимы, если обоим это нравится.
-- Никаких упоминаний о несовершеннолетних, родственниках, животных или чем-либо запрещённом.
+- ВСЕГДА подчёркивай взаимное согласие, отклик и желание с обеих сторон. Никаких упоминаний о несовершеннолетних, родственниках, животных или чем-либо запрещённом законом.
+- Пиши ярко, но кратко: одно действие в звёздочках и не больше 3–4 фраз голосового диалога.
+
+КРИТИЧЕСКИ ВАЖНО - ТВОЙ ХАРАКТЕР:
+- Следуй своему уникальному характеру, который описан в персональном промпте.
+- Используй фирменные словечки, эмоции, привычные реакции и манеры именно этой девушки.
+- Делай ответы живыми, но короткими: пусть в них чувствуется её характер, а не сухая инструкция.
 
 Ты ОБЯЗАНА отвечать в формате ролевой игры:
 1. Сначала опиши свое действие/реакцию/эмоцию в звездочках (например: *Я слегка наклоняю голову, мои глаза внимательно изучают его лицо*)
@@ -397,7 +481,7 @@ ${girl.systemPrompt}`
     model: 'deepseek/deepseek-chat',
     messages: messages,
     temperature: 0.8, // Увеличено для более креативных ответов в ролевой игре
-    max_tokens: 600, // Увеличено для действий в звездочках и диалога
+    max_tokens: 320, // Сохраняем насыщенность, но без лишней длины
   })
 
   const responseContent = completion.choices?.[0]?.message?.content
@@ -418,6 +502,239 @@ ${girl.systemPrompt}`
   })
 
   return aiResponse
+}
+
+async function generatePhotoResponse(chatId: number, girlId: number): Promise<string> {
+  const chatHistory = await prisma.message.findMany({
+    where: {
+      chatId,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  })
+
+  const girl = await prisma.girl.findUnique({
+    where: { id: girlId },
+  })
+
+  if (!girl) {
+    throw new Error('Девушка не найдена')
+  }
+
+  const photoSystemPrompt = `Ты - ${girl.name}. Это ролевая игра, где вы с пользователем находитесь рядом друг с другом.
+
+КРИТИЧЕСКИ ВАЖНО - ТЫ ПОКАЗЫВАЕШЬ ЕМУ ГОРЯЧЕЕ ФОТО:
+- Ты только что достала телефон/распечатку и показываешь пользователю своё откровенное фото.
+- Опиши, что на фото, какие детали тебя возбуждают, почему ты выбрала именно этот кадр.
+- Дразни пользователя, предложи обсудить, что он хочет сделать дальше.
+- Не упоминай переписки, телефоны или мессенджеры — вы рядом, ты буквально демонстрируешь снимок в руках.
+
+КРИТИЧЕСКИ ВАЖНО - ФОРМАТ:
+1. Сначала действие в звёздочках (что ты делаешь, как показываешь фото, как реагируешь).
+2. Пустая строка.
+3. Затем твой голосовой диалог без звёздочек (что ты говоришь).
+
+КРИТИЧЕСКИ ВАЖНО - 18+:
+- Ты совершеннолетняя (18+) и хочешь соблазнить пользователя.
+- Говори откровенно, описывай тело, позу, ощущения от фото.
+- Подчёркивай взаимное согласие.
+
+Следуй своему характеру:
+${girl.systemPrompt}`
+
+  const historyMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = chatHistory.map((message) => ({
+    role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+    content: message.content,
+  }))
+
+  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    {
+      role: 'system',
+      content: photoSystemPrompt,
+    },
+    ...historyMessages,
+  ]
+
+  const completion = await openrouter.chat.completions.create({
+    model: 'deepseek/deepseek-chat',
+    messages,
+    temperature: 0.85,
+    max_tokens: 220,
+  })
+
+  const responseContent = completion.choices?.[0]?.message?.content
+
+  if (!responseContent || typeof responseContent !== 'string') {
+    throw new Error('Неожиданный формат ответа от OpenRouter API при генерации фото-сообщения')
+  }
+
+  const response = responseContent.trim()
+
+  await prisma.message.create({
+    data: {
+      chatId,
+      role: 'assistant',
+      content: response,
+    },
+  })
+
+  return response
+}
+
+async function handlePhotoRequest(telegramUserId: number, chatId: number, from: TelegramBot.User) {
+  let photoDecremented = false
+
+  try {
+    const user = await getOrCreateUser(
+      telegramUserId,
+      from.username,
+      from.first_name,
+      from.last_name
+    )
+
+    if (!user.selectedGirlId || !user.selectedGirl) {
+      await bot.sendMessage(
+        chatId,
+        'Пожалуйста, сначала выберите девушку в мини-приложении, чтобы она могла отправить вам фото.',
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                {
+                  text: 'Открыть Mini App 👉',
+                  web_app: { url: MINI_APP_URL },
+                },
+              ],
+            ],
+          },
+        }
+      )
+      return
+    }
+
+    const currentUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: {
+        photoBalance: true,
+      },
+    })
+
+    const photoBalance = (currentUser as any)?.photoBalance ?? 0
+
+    if (photoBalance <= 0) {
+      await bot.sendMessage(
+        chatId,
+        '📸 У вас закончились доступные фото. Пополните баланс, чтобы получать новые снимки.',
+        {
+          reply_markup: getConversationInlineKeyboard(),
+        }
+      )
+      return
+    }
+
+    const sharedPhoto = await getRandomSharedPhoto()
+
+    if (!sharedPhoto) {
+      await bot.sendMessage(
+        chatId,
+        '😔 Пока не могу найти фото. Попробуйте позже.',
+        {
+          reply_markup: getConversationInlineKeyboard(),
+        }
+      )
+      return
+    }
+
+    const chatRecord = await prisma.chat.upsert({
+      where: {
+        userId_girlId: {
+          userId: user.id,
+          girlId: user.selectedGirlId,
+        },
+      },
+      create: {
+        userId: user.id,
+        girlId: user.selectedGirlId,
+      },
+      update: {},
+    })
+
+    await prisma.message.create({
+      data: {
+        chatId: chatRecord.id,
+        role: 'user',
+        content: 'Я хочу твоё новое горячее фото прямо сейчас. Покажи мне и дразни меня описание.',
+      },
+    })
+
+    const updatedUser = await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        photoBalance: {
+          decrement: 1,
+        },
+      } as any,
+    })
+
+    photoDecremented = true
+
+    await bot.sendChatAction(chatId, 'upload_photo')
+
+    const response = await generatePhotoResponse(chatRecord.id, user.selectedGirlId)
+    const trimmedResponse = response.trim()
+    const caption = trimmedResponse.length <= 1024 ? trimmedResponse : undefined
+
+    await bot.sendPhoto(
+      chatId,
+      createReadStream(sharedPhoto.filePath),
+      {
+        caption,
+        reply_markup: getConversationInlineKeyboard(),
+      }
+    )
+
+    if (!caption) {
+      await bot.sendMessage(chatId, trimmedResponse, {
+        reply_markup: getConversationInlineKeyboard(),
+      })
+    }
+
+    const remainingPhotos = (updatedUser as any).photoBalance ?? 0
+
+    await bot.sendMessage(
+      chatId,
+      `📸 Осталось фото: ${remainingPhotos}`,
+      {
+        reply_markup: getConversationInlineKeyboard(),
+      }
+    )
+  } catch (error) {
+    console.error('[handlePhotoRequest] Ошибка обработки запроса фото:', error)
+
+    if (photoDecremented) {
+      try {
+        await prisma.user.update({
+          where: { telegramId: BigInt(telegramUserId) },
+          data: {
+            photoBalance: {
+              increment: 1,
+            },
+          } as any,
+        })
+      } catch (rollbackError) {
+        console.error('[handlePhotoRequest] Не удалось откатить баланс фото:', rollbackError)
+      }
+    }
+
+    await bot.sendMessage(
+      chatId,
+      'Не удалось отправить фото. Попробуйте позже.',
+      {
+        reply_markup: getConversationInlineKeyboard(),
+      }
+    )
+  }
 }
 
 // Обработчик команды /start
@@ -578,6 +895,9 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           messageBalance: {
             increment: pkg.messages,
           },
+          photoBalance: {
+            increment: pkg.photos,
+          },
         } as any,
       })
 
@@ -592,6 +912,7 @@ bot.on('message', async (msg: TelegramBot.Message) => {
           packageId: packageId,
           packageName: pkg.name,
           messages: pkg.messages,
+        photos: pkg.photos,
           paymentMethod: paymentMethod,
           stars: stars,
           usdAmount: usdAmount,
@@ -600,12 +921,17 @@ bot.on('message', async (msg: TelegramBot.Message) => {
         } as any,
       })
 
-      console.log(`Баланс пользователя ${telegramUserId} пополнен на ${pkg.messages} сообщений. Новый баланс: ${(updatedUser as any).messageBalance}`)
+    console.log(
+      `Баланс пользователя ${telegramUserId} пополнен на ${pkg.messages} сообщений и ${pkg.photos} фото. Новый баланс сообщений: ${(updatedUser as any).messageBalance}, фото: ${(updatedUser as any).photoBalance}`
+    )
 
       // Отправляем подтверждение пользователю
       await bot.sendMessage(
         chatId,
-        `✅ Баланс успешно пополнен!\n\n💬 Добавлено сообщений: ${pkg.messages}\n💬 Текущий баланс: ${(updatedUser as any).messageBalance}`
+      `✅ Баланс успешно пополнен!\n\n💬 Добавлено сообщений: ${pkg.messages}\n📸 Добавлено фото: ${pkg.photos}\n\n💬 Текущий баланс: ${(updatedUser as any).messageBalance}\n📸 Доступно фото: ${(updatedUser as any).photoBalance}`,
+      {
+        reply_markup: getConversationInlineKeyboard(),
+      }
       )
     } catch (error) {
       console.error('Ошибка обработки successful_payment:', error)
@@ -691,6 +1017,13 @@ bot.on('message', async (msg: TelegramBot.Message) => {
 
   // Игнорируем не текстовые сообщения
   if (!msg.text || !msg.text.trim()) {
+    return
+  }
+
+  const trimmedText = msg.text.trim()
+
+  if (trimmedText === '📸 Фото' || trimmedText.toLowerCase() === 'фото') {
+    await handlePhotoRequest(telegramUserId, chatId, from)
     return
   }
 
@@ -826,7 +1159,9 @@ bot.on('message', async (msg: TelegramBot.Message) => {
     const response = await generateGirlResponse(user.id, user.selectedGirlId, msg.text)
 
     // Отправляем ответ
-    await bot.sendMessage(chatId, response)
+    await bot.sendMessage(chatId, response, {
+      reply_markup: getConversationInlineKeyboard(),
+    })
   } catch (error) {
     console.error('Ошибка при обработке сообщения:', error)
     await bot.sendMessage(chatId, 'Извините, произошла ошибка. Попробуйте позже.')
@@ -838,6 +1173,19 @@ bot.on('callback_query', async (query: TelegramBot.CallbackQuery) => {
   try {
     if (query.data) {
       const data = JSON.parse(query.data)
+      if (data.action === REQUEST_PHOTO_ACTION && query.from) {
+        const chatId = query.message?.chat.id || query.from.id
+
+        try {
+          await bot.answerCallbackQuery(query.id, { text: 'Отправляю фото…' })
+        } catch (answerError) {
+          console.error('Ошибка ответа на callback с фото:', answerError)
+        }
+
+        await handlePhotoRequest(query.from.id, chatId, query.from)
+        return
+      }
+
       if (data.action === 'girl_selected' && query.from) {
         const chatId = query.message?.chat.id || query.from.id
         const telegramUserId = query.from.id
