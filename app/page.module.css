@@ -393,6 +393,7 @@
   display: flex;
   gap: 16px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .statCard {
@@ -401,7 +402,8 @@
   padding: 20px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  flex: 1;
+  flex: 1 1 180px;
+  min-width: 160px;
 }
 
 .statValue {
@@ -613,6 +615,112 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.grantCard {
+  margin-top: 24px;
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.grantCard h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.grantDescription {
+  margin: 0;
+  font-size: 14px;
+  color: #555;
+  line-height: 1.5;
+}
+
+.grantForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.grantRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grantInput {
+  flex: 1;
+  min-width: 140px;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 16px;
+  color: #333;
+  background: #fdfdfd;
+}
+
+.grantInput:disabled {
+  background: #f5f5f5;
+}
+
+.grantReasonInput {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #333;
+  background: #fdfdfd;
+}
+
+.grantReasonInput:disabled {
+  background: #f5f5f5;
+}
+
+.grantButton {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  color: white;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.grantButton:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.grantButton:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(72, 187, 120, 0.35);
+}
+
+.grantError {
+  font-size: 14px;
+  color: #d14343;
+  background: #fde8e8;
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.grantSuccess {
+  font-size: 14px;
+  color: #107154;
+  background: #e6f4ea;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
 
 .infoItem {

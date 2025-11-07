@@ -143,3 +143,96 @@ export async function GET(
   }
 }
 
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  try {
+    const telegramUserId = getTelegramUserId(request)
+
+    if (!isAdmin(telegramUserId)) {
+      return NextResponse.json(
+        { error: 'Доступ запрещен' },
+        { status: 403 }
+      )
+    }
+
+    const { userId: userIdParam } = await params
+    const userId = parseInt(userIdParam)
+
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { error: 'Неверный ID пользователя' },
+        { status: 400 }
+      )
+    }
+
+    let body: any = null
+    try {
+      body = await request.json()
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Некорректные данные запроса' },
+        { status: 400 }
+      )
+    }
+
+    const amount = Number(body?.amount)
+    const reason = typeof body?.reason === 'string' ? body.reason.trim() : ''
+
+    if (!Number.isInteger(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: 'Количество сообщений должно быть положительным целым числом' },
+        { status: 400 }
+      )
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        messageBalance: {
+          increment: amount,
+        },
+      },
+      select: {
+        id: true,
+        messageBalance: true,
+      },
+    })
+
+    const packageName = reason
+      ? `Ручное начисление (${reason})`
+      : 'Ручное начисление'
+
+    try {
+      await prisma.paymentHistory.create({
+        data: {
+          userId: userId,
+          packageId: 0,
+          packageName,
+          messages: amount,
+          paymentMethod: 'manual',
+          stars: null,
+          usdAmount: null,
+          invoicePayload: reason ? JSON.stringify({ reason }) : null,
+          telegramPaymentId: null,
+        },
+      })
+    } catch (historyError) {
+      console.error('Не удалось создать запись истории при ручном начислении:', historyError)
+    }
+
+    return NextResponse.json({
+      success: true,
+      granted: amount,
+      balance: updatedUser.messageBalance,
+    })
+  } catch (error) {
+    console.error('Ошибка при ручном начислении сообщений пользователю:', error)
+    return NextResponse.json(
+      { error: 'Ошибка при начислении сообщений' },
+      { status: 500 }
+    )
+  }
+}
+

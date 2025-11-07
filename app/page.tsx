@@ -641,9 +641,18 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'info' | 'chats' | 'payments'>('info')
+  const [grantAmount, setGrantAmount] = useState<string>('')
+  const [grantReason, setGrantReason] = useState<string>('')
+  const [grantLoading, setGrantLoading] = useState(false)
+  const [grantError, setGrantError] = useState<string | null>(null)
+  const [grantSuccess, setGrantSuccess] = useState<string | null>(null)
 
   useEffect(() => {
     fetchUser()
+    setGrantAmount('')
+    setGrantReason('')
+    setGrantError(null)
+    setGrantSuccess(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId])
 
@@ -671,6 +680,54 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
       setError('Ошибка загрузки данных пользователя')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGrantMessages = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setGrantError(null)
+    setGrantSuccess(null)
+
+    const parsedAmount = parseInt(grantAmount, 10)
+
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      setGrantError('Введите положительное целое число сообщений')
+      return
+    }
+
+    try {
+      setGrantLoading(true)
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+        body: JSON.stringify({ amount: parsedAmount, reason: grantReason }),
+      })
+
+      let data: any = null
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        // Игнорируем ошибку парсинга, обработаем по статусу
+      }
+
+      if (!response.ok) {
+        setGrantError(data?.error || 'Не удалось начислить сообщения пользователю')
+        return
+      }
+
+      await fetchUser()
+      setGrantAmount('')
+      setGrantReason('')
+      setGrantSuccess(`Добавлено ${data?.granted ?? parsedAmount} сообщений`)
+    } catch (err) {
+      console.error('Ошибка ручного начисления сообщений пользователю:', err)
+      setGrantError('Произошла ошибка. Попробуйте еще раз.')
+    } finally {
+      setGrantLoading(false)
     }
   }
 
@@ -720,40 +777,79 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
 
       <div className={styles.userDetailContent}>
         {activeTab === 'info' && (
-          <div className={styles.userDetailInfo}>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Баланс:</span>
-              <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
-            </div>
-            {user.selectedGirl && (
+          <>
+            <div className={styles.userDetailInfo}>
               <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>Девушка:</span>
-                <span className={styles.infoValue}>{user.selectedGirl.name}</span>
+                <span className={styles.infoLabel}>Баланс:</span>
+                <span className={styles.infoValue}>{user.messageBalance} сообщений</span>
               </div>
-            )}
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Чатов:</span>
-              <span className={styles.infoValue}>{user.stats.totalChats}</span>
-            </div>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Сообщений:</span>
-              <span className={styles.infoValue}>{user.stats.totalMessages}</span>
-            </div>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Платежей:</span>
-              <span className={styles.infoValue}>{user.stats.totalPayments}</span>
-            </div>
-            <div className={styles.infoItem}>
-              <span className={styles.infoLabel}>Звезд потрачено:</span>
-              <span className={styles.infoValue}>{user.stats.totalStarsSpent}</span>
-            </div>
-            {user.stats.totalUsdSpent > 0 && (
+              {user.selectedGirl && (
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>Девушка:</span>
+                  <span className={styles.infoValue}>{user.selectedGirl.name}</span>
+                </div>
+              )}
               <div className={styles.infoItem}>
-                <span className={styles.infoLabel}>USD потрачено:</span>
-                <span className={styles.infoValue}>${user.stats.totalUsdSpent.toFixed(2)}</span>
+                <span className={styles.infoLabel}>Чатов:</span>
+                <span className={styles.infoValue}>{user.stats.totalChats}</span>
               </div>
-            )}
-          </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Сообщений:</span>
+                <span className={styles.infoValue}>{user.stats.totalMessages}</span>
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Платежей:</span>
+                <span className={styles.infoValue}>{user.stats.totalPayments}</span>
+              </div>
+              <div className={styles.infoItem}>
+                <span className={styles.infoLabel}>Звезд потрачено:</span>
+                <span className={styles.infoValue}>{user.stats.totalStarsSpent}</span>
+              </div>
+              {user.stats.totalUsdSpent > 0 && (
+                <div className={styles.infoItem}>
+                  <span className={styles.infoLabel}>USD потрачено:</span>
+                  <span className={styles.infoValue}>${user.stats.totalUsdSpent.toFixed(2)}</span>
+                </div>
+              )}
+            </div>
+
+            <div className={styles.grantCard}>
+              <h3>Выдать сообщения</h3>
+              <p className={styles.grantDescription}>
+                Начислите дополнительные сообщения вручную. Пользователь получит уведомление от бота при следующем использовании.
+              </p>
+              <form className={styles.grantForm} onSubmit={handleGrantMessages}>
+                <div className={styles.grantRow}>
+                  <input
+                    type="number"
+                    min={1}
+                    className={styles.grantInput}
+                    placeholder="Количество сообщений"
+                    value={grantAmount}
+                    onChange={(event) => setGrantAmount(event.target.value)}
+                    disabled={grantLoading}
+                  />
+                  <button
+                    type="submit"
+                    className={styles.grantButton}
+                    disabled={grantLoading}
+                  >
+                    {grantLoading ? 'Начисляем...' : 'Начислить'}
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className={styles.grantReasonInput}
+                  placeholder="Комментарий для истории (необязательно)"
+                  value={grantReason}
+                  onChange={(event) => setGrantReason(event.target.value)}
+                  disabled={grantLoading}
+                />
+              </form>
+              {grantError && <div className={styles.grantError}>{grantError}</div>}
+              {grantSuccess && <div className={styles.grantSuccess}>{grantSuccess}</div>}
+            </div>
+          </>
         )}
 
         {activeTab === 'chats' && (
@@ -793,12 +889,23 @@ function AdminUserDetail({ userId, onBack }: { userId: number; onBack: () => voi
                   </div>
                   <div className={styles.paymentInfo}>
                     <div>Сообщений: {payment.messages}</div>
-                    {payment.paymentMethod === 'stars' ? (
+                    {payment.paymentMethod === 'stars' && (
                       <div>Звезд: {payment.stars} ⭐</div>
-                    ) : (
+                    )}
+                    {payment.paymentMethod === 'usd' && (
                       <div>USD: ${payment.usdAmount?.toFixed(2) || '0.00'} 💵</div>
                     )}
-                    <div>Метод: {payment.paymentMethod === 'stars' ? 'Telegram Stars' : 'Карта (USD)'}</div>
+                    {payment.paymentMethod === 'manual' && (
+                      <div>Начислено администратором</div>
+                    )}
+                    <div>
+                      Метод:{' '}
+                      {payment.paymentMethod === 'stars'
+                        ? 'Telegram Stars'
+                        : payment.paymentMethod === 'usd'
+                        ? 'Карта (USD)'
+                        : 'Ручное начисление'}
+                    </div>
                   </div>
                 </div>
               ))
