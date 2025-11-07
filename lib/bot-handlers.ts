@@ -534,6 +534,7 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
 1. Сначала действие в звёздочках (что ты делаешь, как показываешь фото, как реагируешь).
 2. Пустая строка.
 3. Затем твой голосовой диалог без звёздочек (что ты говоришь).
+Диалог состоит ровно из ОДНОГО короткого предложения (не длиннее 12 слов).
 
 КРИТИЧЕСКИ ВАЖНО - 18+:
 - Ты совершеннолетняя (18+) и хочешь соблазнить пользователя.
@@ -559,8 +560,8 @@ ${girl.systemPrompt}`
   const completion = await openrouter.chat.completions.create({
     model: 'deepseek/deepseek-chat',
     messages,
-    temperature: 0.85,
-    max_tokens: 220,
+    temperature: 0.65,
+    max_tokens: 160,
   })
 
   const responseContent = completion.choices?.[0]?.message?.content
@@ -571,15 +572,31 @@ ${girl.systemPrompt}`
 
   const response = responseContent.trim()
 
+  const lines = response
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+
+  const actionLine = lines.find((line) => line.startsWith('*')) || '*Я слегка прижимаю телефон к вам, чтобы вы видели каждый сантиметр*'
+  const dialogLineCandidate = lines.find((line) => !line.startsWith('*')) || 'Вот это фото я сделала специально для тебя.'
+
+  const dialogWords = dialogLineCandidate.split(/\s+/)
+  let dialogLine = dialogWords.length > 12 ? dialogWords.slice(0, 12).join(' ') : dialogLineCandidate
+  if (!dialogLine.endsWith('.') && !dialogLine.endsWith('!') && !dialogLine.endsWith('?')) {
+    dialogLine += '.'
+  }
+
+  const finalResponse = `${actionLine}\n\n${dialogLine}`
+
   await prisma.message.create({
     data: {
       chatId,
       role: 'assistant',
-      content: response,
+      content: finalResponse,
     },
   })
 
-  return response
+  return finalResponse
 }
 
 async function handlePhotoRequest(telegramUserId: number, chatId: number, from: TelegramBot.User) {
@@ -700,15 +717,6 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
       })
     }
 
-    const remainingPhotos = (updatedUser as any).photoBalance ?? 0
-
-    await bot.sendMessage(
-      chatId,
-      `📸 Осталось фото: ${remainingPhotos}`,
-      {
-        reply_markup: getConversationInlineKeyboard(),
-      }
-    )
   } catch (error) {
     console.error('[handlePhotoRequest] Ошибка обработки запроса фото:', error)
 
