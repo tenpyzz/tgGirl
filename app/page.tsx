@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState, type MouseEvent } from 'react'
+import Image from 'next/image'
+import { useCallback, useEffect, useState, type MouseEvent } from 'react'
 import { initTelegramWebApp } from '@/lib/telegram-webapp'
 import { PACKAGES, getPackageUsdPrice, getPackageOldUsdPrice, type PackageId } from '@/lib/packages'
 import { GIRL_PROFILES, type GirlProfile } from '@/lib/girl-profiles'
@@ -116,42 +117,7 @@ export default function Home() {
     usdPayments: number
   } | null>(null)
 
-  useEffect(() => {
-    // Инициализация Telegram WebApp
-    initTelegramWebApp()
-
-    // Загрузка списка девушек
-    fetchGirls()
-    
-    // Загрузка баланса
-    fetchBalance()
-
-    // Проверка прав администратора
-    checkAdmin()
-  }, [])
-
-  const checkAdmin = async () => {
-    try {
-      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
-      const response = await fetch('/api/admin/check', {
-        headers: {
-          ...(initData ? { 'x-telegram-init-data': initData } : {}),
-        },
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setIsAdmin(data.isAdmin)
-        if (data.isAdmin) {
-          fetchAdminUsers()
-          fetchAdminStats()
-        }
-      }
-    } catch (error) {
-      console.error('Ошибка проверки прав администратора:', error)
-    }
-  }
-
-  const fetchAdminStats = async () => {
+  const fetchAdminStats = useCallback(async () => {
     try {
       const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
       const response = await fetch('/api/admin/stats', {
@@ -166,9 +132,9 @@ export default function Home() {
     } catch (error) {
       console.error('Ошибка загрузки статистики:', error)
     }
-  }
+  }, [])
 
-  const fetchAdminUsers = async () => {
+  const fetchAdminUsers = useCallback(async () => {
     try {
       setAdminLoading(true)
       setAdminError(null)
@@ -198,9 +164,30 @@ export default function Home() {
     } finally {
       setAdminLoading(false)
     }
-  }
+  }, [])
 
-  const fetchBalance = async () => {
+  const checkAdmin = useCallback(async () => {
+    try {
+      const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
+      const response = await fetch('/api/admin/check', {
+        headers: {
+          ...(initData ? { 'x-telegram-init-data': initData } : {}),
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setIsAdmin(data.isAdmin)
+        if (data.isAdmin) {
+          fetchAdminUsers()
+          fetchAdminStats()
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка проверки прав администратора:', error)
+    }
+  }, [fetchAdminUsers, fetchAdminStats])
+
+  const fetchBalance = useCallback(async () => {
     try {
       const initData = typeof window !== 'undefined' && window.Telegram?.WebApp?.initData
       const response = await fetch('/api/balance', {
@@ -215,7 +202,35 @@ export default function Home() {
     } catch (error) {
       console.error('Ошибка загрузки баланса:', error)
     }
-  }
+  }, [])
+
+  const fetchGirls = useCallback(async () => {
+    try {
+      const response = await fetch('/api/girls')
+      if (response.ok) {
+        const data = await response.json()
+        setGirls(data)
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки девушек:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    // Инициализация Telegram WebApp
+    initTelegramWebApp()
+
+    // Загрузка списка девушек
+    fetchGirls()
+    
+    // Загрузка баланса
+    fetchBalance()
+
+    // Проверка прав администратора
+    checkAdmin()
+  }, [checkAdmin, fetchBalance, fetchGirls])
 
   const handleTopup = async (packageId: number) => {
     if (isProcessingPayment) return
@@ -274,20 +289,6 @@ export default function Home() {
         window.Telegram.WebApp.showAlert('Ошибка при создании инвойса. Попробуйте еще раз.')
       }
       setIsProcessingPayment(false)
-    }
-  }
-
-  const fetchGirls = async () => {
-    try {
-      const response = await fetch('/api/girls')
-      if (response.ok) {
-        const data = await response.json()
-        setGirls(data)
-      }
-    } catch (error) {
-      console.error('Ошибка загрузки девушек:', error)
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -518,10 +519,13 @@ export default function Home() {
                   }
                 >
                   {item.photoUrl ? (
-                    <img
+                    <Image
                       src={item.photoUrl}
                       alt={item.name}
                       className={styles.girlBackground}
+                      fill
+                      priority={item.id === girls[0]?.id}
+                      sizes="(max-width: 600px) 100vw, 600px"
                     />
                   ) : (
                     <div className={`${styles.girlBackground} ${styles.placeholderPhoto}`}>
@@ -794,7 +798,13 @@ function GirlDetailModal({ girl, profile, teaser, onClose, onStart, isStarting }
         <div className={styles.girlDetailHero}>
           <div className={styles.girlDetailPhoto}>
             {girl.photoUrl ? (
-              <img src={girl.photoUrl} alt={girl.name} />
+              <Image
+                src={girl.photoUrl}
+                alt={girl.name}
+                fill
+                className={styles.girlDetailPhotoImage}
+                sizes="140px"
+              />
             ) : (
               <div className={styles.girlDetailPhotoPlaceholder}>
                 <span>{girl.name[0]}</span>

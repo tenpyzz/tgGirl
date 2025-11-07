@@ -2,13 +2,7 @@ import { NextResponse } from 'next/server'
 import { promises as fs } from 'fs'
 import { getGirlPhotoPath } from '@/lib/default-girls'
 
-interface RouteParams {
-  params: {
-    girlId: string
-  }
-}
-
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(_request: Request, { params }: { params: { girlId: string } }) {
   const girlId = Number(params.girlId)
 
   if (!Number.isInteger(girlId)) {
