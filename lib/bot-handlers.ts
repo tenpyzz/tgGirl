@@ -16,7 +16,7 @@ const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL |
 
 const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото')
 const REQUEST_PHOTO_ACTION = 'request_photo'
-const MAX_HISTORY_MESSAGES_FETCH = 40
+const MAX_HISTORY_MESSAGES_FETCH = 20
 const MAX_HISTORY_CHARACTERS = 2200
 
 let sharedPhotoFilesCache: string[] | null = null
