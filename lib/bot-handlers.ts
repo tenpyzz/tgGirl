@@ -465,43 +465,55 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     })
   )
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: enhancedSystemPrompt,
-    },
-    ...historyMessagesForCompletion,
-  ]
-
-  // Генерируем ответ от ИИ через OpenRouter
-  // Используем более высокую температуру для более креативных ответов в ролевой игре
   let aiResponse: string | null = null
-  try {
-    const completion = await openrouter.chat.completions.create({
-      model: 'deepseek/deepseek-chat',
-      messages,
-      temperature: 0.8, // Увеличено для более креативных ответов в ролевой игре
-      max_tokens: 240, // Сохраняем насыщенность, но без лишней длины
-    })
+  let attemptHistory = historyMessagesForCompletion
 
-    const responseContent = completion.choices?.[0]?.message?.content
+  for (let attempt = 0; attempt < 3 && !aiResponse; attempt++) {
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: enhancedSystemPrompt,
+      },
+      ...attemptHistory,
+    ]
 
-    if (!responseContent || typeof responseContent !== 'string') {
-      throw new Error('Неожиданный формат ответа от OpenRouter API')
-    }
+    try {
+      const completion = await openrouter.chat.completions.create({
+        model: 'deepseek/deepseek-chat',
+        messages,
+        temperature: 0.8,
+        max_tokens: 240,
+      })
 
-    aiResponse = responseContent.trim() || 'Извини, я растерялась, скажи мне об этом снова.'
-  } catch (error) {
-    if (isPromptLimitError(error)) {
-      console.warn('[generateGirlResponse] Превышен лимит токенов, используем fallback-ответ')
-      aiResponse = buildFallbackDialogue()
-    } else {
+      const responseContent = completion.choices?.[0]?.message?.content
+
+      if (!responseContent || typeof responseContent !== 'string') {
+        throw new Error('Неожиданный формат ответа от OpenRouter API')
+      }
+
+      aiResponse = responseContent.trim() || 'Извини, я растерялась, скажи мне об этом снова.'
+    } catch (error) {
+      if (isPromptLimitError(error) && attemptHistory.length > 1) {
+        const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
+        attemptHistory = attemptHistory.slice(-trimmedLength)
+        console.warn(
+          `[generateGirlResponse] Превышен лимит токенов, повторяем с ${attemptHistory.length} сообщениями истории`
+        )
+        continue
+      }
+
+      if (isPromptLimitError(error)) {
+        console.warn('[generateGirlResponse] Превышен лимит токенов после повторов, используем fallback-ответ')
+        aiResponse = buildFallbackDialogue()
+        break
+      }
+
       throw error
     }
   }
 
   if (!aiResponse) {
-    throw new Error('Не удалось получить ответ от девушки')
+    aiResponse = buildFallbackDialogue()
   }
 
   // Сохраняем ответ ИИ
@@ -557,35 +569,49 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
     })
   )
 
-  const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    {
-      role: 'system',
-      content: photoSystemPrompt,
-    },
-    ...historyMessagesForCompletion,
-  ]
-
   let response: string | null = null
-  try {
-    const completion = await openrouter.chat.completions.create({
-      model: 'deepseek/deepseek-chat',
-      messages,
-      temperature: 0.65,
-      max_tokens: 160,
-    })
+  let attemptHistory = historyMessagesForCompletion
 
-    const responseContent = completion.choices?.[0]?.message?.content
+  for (let attempt = 0; attempt < 3 && !response; attempt++) {
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: photoSystemPrompt,
+      },
+      ...attemptHistory,
+    ]
 
-    if (!responseContent || typeof responseContent !== 'string') {
-      throw new Error('Неожиданный формат ответа от OpenRouter API при генерации фото-сообщения')
-    }
+    try {
+      const completion = await openrouter.chat.completions.create({
+        model: 'deepseek/deepseek-chat',
+        messages,
+        temperature: 0.65,
+        max_tokens: 160,
+      })
 
-    response = responseContent.trim()
-  } catch (error) {
-    if (isPromptLimitError(error)) {
-      console.warn('[generatePhotoResponse] Превышен лимит токенов, используем fallback-описание фото')
-      response = buildFallbackPhotoResponse()
-    } else {
+      const responseContent = completion.choices?.[0]?.message?.content
+
+      if (!responseContent || typeof responseContent !== 'string') {
+        throw new Error('Неожиданный формат ответа от OpenRouter API при генерации фото-сообщения')
+      }
+
+      response = responseContent.trim()
+    } catch (error) {
+      if (isPromptLimitError(error) && attemptHistory.length > 1) {
+        const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
+        attemptHistory = attemptHistory.slice(-trimmedLength)
+        console.warn(
+          `[generatePhotoResponse] Превышен лимит токенов, повторяем с ${attemptHistory.length} сообщениями истории`
+        )
+        continue
+      }
+
+      if (isPromptLimitError(error)) {
+        console.warn('[generatePhotoResponse] Превышен лимит токенов после повторов, используем fallback-описание фото')
+        response = buildFallbackPhotoResponse()
+        break
+      }
+
       throw error
     }
   }
