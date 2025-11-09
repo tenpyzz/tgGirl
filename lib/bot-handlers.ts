@@ -15,8 +15,37 @@ const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL |
 
 const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото')
 const REQUEST_PHOTO_ACTION = 'request_photo'
+const MAX_HISTORY_MESSAGES_FETCH = 100
+const MAX_HISTORY_CHARACTERS = 6500
 
 let sharedPhotoFilesCache: string[] | null = null
+
+function limitHistoryMessages<T extends { role: 'user' | 'assistant'; content?: string | null }>(
+  messages: T[],
+  maxCharacters: number
+): T[] {
+  if (messages.length === 0) {
+    return messages
+  }
+
+  let totalCharacters = 0
+  const selectedMessages: T[] = []
+
+  for (let index = messages.length - 1; index >= 0; index--) {
+    const message = messages[index]
+    const content = typeof message.content === 'string' ? message.content : ''
+    const contentLength = content.length
+
+    if (selectedMessages.length > 0 && totalCharacters + contentLength > maxCharacters) {
+      break
+    }
+
+    selectedMessages.push(message)
+    totalCharacters += contentLength
+  }
+
+  return selectedMessages.reverse()
+}
 
 function getConversationInlineKeyboard(): TelegramBot.InlineKeyboardMarkup {
   return {
@@ -387,8 +416,9 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
       chatId: chat.id,
     },
     orderBy: {
-      createdAt: 'asc',
+      createdAt: 'desc',
     },
+    take: MAX_HISTORY_MESSAGES_FETCH,
   })
 
   // Получаем девушку и её системный промпт
@@ -470,17 +500,28 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 ${girl.systemPrompt}`
 
   // Формируем массив сообщений для ИИ
-  const historyMessages = chatHistory.map((message) => ({
+  const orderedHistory = chatHistory.slice().reverse()
+
+  const historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = orderedHistory.map((message) => ({
     role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: message.content,
   }))
+
+  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_HISTORY_CHARACTERS)
+
+  const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
+    (message) => ({
+      role: message.role,
+      content: message.content,
+    })
+  )
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: enhancedSystemPrompt,
     },
-    ...historyMessages,
+    ...historyMessagesForCompletion,
   ]
 
   // Генерируем ответ от ИИ через OpenRouter
@@ -518,8 +559,9 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
       chatId,
     },
     orderBy: {
-      createdAt: 'asc',
+      createdAt: 'desc',
     },
+    take: MAX_HISTORY_MESSAGES_FETCH,
   })
 
   const girl = await prisma.girl.findUnique({
@@ -552,17 +594,28 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
 Следуй своему характеру:
 ${girl.systemPrompt}`
 
-  const historyMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = chatHistory.map((message) => ({
+  const orderedHistory = chatHistory.slice().reverse()
+
+  const historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = orderedHistory.map((message) => ({
     role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: message.content,
   }))
+
+  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_HISTORY_CHARACTERS)
+
+  const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
+    (message) => ({
+      role: message.role,
+      content: message.content,
+    })
+  )
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: 'system',
       content: photoSystemPrompt,
     },
-    ...historyMessages,
+    ...historyMessagesForCompletion,
   ]
 
   const completion = await openrouter.chat.completions.create({
@@ -640,7 +693,7 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
       where: { id: user.id },
       select: {
         photoBalance: true,
-      },
+      } as any,
     })
 
     const photoBalance = (currentUser as any)?.photoBalance ?? 0
