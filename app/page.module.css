@@ -1,16 +1,38 @@
 .container {
   min-height: 100vh;
-  padding: 20px;
-  max-width: 600px;
+  padding: 28px 20px 32px;
+  max-width: 620px;
   margin: 0 auto;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  color: #f8fafc;
+}
+
+.container::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  z-index: -1;
+  max-width: 560px;
+  width: calc(100% - 32px);
+  height: calc(100% - 32px);
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.82), rgba(15, 23, 42, 0.78));
+  border-radius: 32px;
+  border: 1px solid rgba(148, 163, 255, 0.18);
+  box-shadow: 0 40px 80px rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(18px);
 }
 
 .title {
-  font-size: 24px;
-  font-weight: 600;
-  margin-bottom: 24px;
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 16px;
   text-align: center;
-  color: #333;
+  color: #fdf4ff;
+  letter-spacing: 0.04em;
 }
 
 .girlsList {
@@ -24,7 +46,7 @@
   text-align: center;
   padding: 40px;
   font-size: 18px;
-  color: #666;
+  color: rgba(226, 232, 240, 0.7);
 }
 
 .girlCard {
@@ -124,8 +146,8 @@
 .girlDetailOverlay {
   position: fixed;
   inset: 0;
-  background: rgba(8, 15, 40, 0.65);
-  backdrop-filter: blur(4px);
+  background: rgba(8, 15, 40, 0.72);
+  backdrop-filter: blur(12px);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -139,18 +161,20 @@
   width: 100%;
   max-width: 560px;
   max-height: calc(100vh - 48px);
-  background: #ffffff;
-  border-radius: 24px 24px 16px 16px;
-  padding: 24px;
-  box-shadow: 0 20px 40px rgba(8, 15, 40, 0.28);
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.9));
+  border-radius: 26px 26px 18px 18px;
+  padding: 28px;
+  box-shadow: 0 28px 56px rgba(8, 15, 40, 0.45);
+  border: 1px solid rgba(148, 163, 255, 0.18);
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
   animation: detailSlideUp 0.24s ease;
   overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
+  color: #e2e8f0;
 }
 
 @keyframes detailSlideUp {
@@ -169,10 +193,10 @@
   top: 16px;
   right: 16px;
   border: none;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4338ca;
-  width: 32px;
-  height: 32px;
+  background: rgba(148, 163, 255, 0.2);
+  color: #f8fafc;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   font-size: 20px;
   font-weight: 600;
@@ -181,16 +205,18 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
+  box-shadow: 0 14px 26px rgba(99, 102, 241, 0.25);
 }
 
 .girlDetailCloseButton:hover:not(:disabled) {
-  background: rgba(99, 102, 241, 0.22);
-  color: #312e81;
+  background: rgba(129, 140, 248, 0.32);
+  color: #fdf4ff;
 }
 
 .girlDetailCloseButton:disabled {
   opacity: 0.4;
   cursor: default;
+  box-shadow: none;
 }
 
 .girlDetailHero {
@@ -202,11 +228,13 @@
 .girlDetailPhoto {
   width: 110px;
   height: 140px;
-  border-radius: 18px;
+  border-radius: 20px;
   overflow: hidden;
   flex-shrink: 0;
-  background: linear-gradient(135deg, #e0e7ff 0%, #ede9fe 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35) 0%, rgba(236, 72, 153, 0.35) 100%);
   position: relative;
+  border: 1px solid rgba(148, 163, 255, 0.24);
+  box-shadow: 0 18px 32px rgba(8, 15, 40, 0.35);
 }
 
 .girlDetailPhoto img {
@@ -223,7 +251,7 @@
   justify-content: center;
   font-size: 40px;
   font-weight: 700;
-  color: #6366f1;
+  color: #e0e7ff;
 }
 
 .girlDetailPhotoImage {
@@ -240,7 +268,7 @@
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #a855f7;
+  color: rgba(244, 114, 182, 0.85);
   font-weight: 600;
 }
 
@@ -248,7 +276,7 @@
   margin: 0;
   font-size: 26px;
   font-weight: 700;
-  color: #111827;
+  color: #f8fafc;
 }
 
 .girlDetailChips {
@@ -260,20 +288,23 @@
 .girlDetailChip {
   padding: 6px 12px;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.12);
-  color: #4338ca;
+  background: rgba(99, 102, 241, 0.18);
+  color: #e0e7ff;
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.04em;
+  backdrop-filter: blur(6px);
 }
 
 .girlDetailSection {
-  background: #f8f5ff;
+  background: rgba(15, 23, 42, 0.55);
   border-radius: 18px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 255, 0.12);
 }
 
 .girlDetailSectionTitle {
@@ -281,7 +312,7 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  color: #4338ca;
+  color: #c7d2fe;
   letter-spacing: 0.04em;
 }
 
@@ -293,7 +324,7 @@
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #374151;
+  color: rgba(226, 232, 240, 0.86);
 }
 
 .girlDetailList {
@@ -308,7 +339,7 @@
 .girlDetailListItem {
   position: relative;
   padding-left: 20px;
-  color: #4b5563;
+  color: rgba(226, 232, 240, 0.8);
   font-size: 14px;
   line-height: 1.5;
 }
@@ -318,25 +349,26 @@
   position: absolute;
   left: 0;
   top: 0;
-  color: #a855f7;
+  color: rgba(244, 114, 182, 0.85);
   font-size: 18px;
   line-height: 1;
 }
 
 .girlDetailHighlight {
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.12) 0%, rgba(236, 72, 153, 0.12) 100%);
+  background: linear-gradient(135deg, rgba(79, 70, 229, 0.18) 0%, rgba(236, 72, 153, 0.18) 100%);
   border-radius: 18px;
   padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 8px;
+  border: 1px solid rgba(148, 163, 255, 0.15);
 }
 
 .girlDetailHighlightTitle {
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #4338ca;
+  color: rgba(199, 210, 254, 0.85);
   font-weight: 600;
 }
 
@@ -345,13 +377,13 @@
   font-size: 15px;
   font-weight: 600;
   line-height: 1.6;
-  color: #1f2937;
+  color: #f9fafb;
 }
 
 .girlDetailFootnote {
   margin: 0;
   font-size: 12px;
-  color: #6b7280;
+  color: rgba(148, 163, 255, 0.65);
   text-align: center;
 }
 
@@ -432,22 +464,125 @@
 }
 
 .balanceCard {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 16px 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  position: relative;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border-radius: 24px;
+  background: linear-gradient(140deg, rgba(244, 240, 255, 0.9) 0%, rgba(253, 242, 248, 0.92) 45%, rgba(254, 243, 199, 0.9) 100%);
+  box-shadow: 0 24px 48px rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.22);
+  overflow: hidden;
+}
+
+.balanceCard::before {
+  content: '';
+  position: absolute;
+  inset: -65% 40% 35% -65%;
+  background: radial-gradient(circle at top, rgba(236, 72, 153, 0.35), rgba(236, 72, 153, 0));
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.balanceCard::after {
+  content: '';
+  position: absolute;
+  inset: 55% -55% -65% 35%;
+  background: radial-gradient(circle at bottom, rgba(79, 70, 229, 0.35), rgba(79, 70, 229, 0));
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.balanceCardAlt {
+  background: linear-gradient(145deg, rgba(238, 242, 255, 0.92) 0%, rgba(253, 242, 248, 0.9) 45%, rgba(237, 233, 254, 0.95) 100%);
+  border-color: rgba(165, 180, 252, 0.32);
+}
+
+.balanceCardHeader,
+.balanceStats,
+.balanceCardHint {
+  position: relative;
+  z-index: 1;
+}
+
+.balanceCardHeader {
+  display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
 }
 
-.balanceStats {
+.balanceCardTitleGroup {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  flex: 1;
+  gap: 6px;
+}
+
+.balanceCardTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: #312e81;
+}
+
+.balanceCardSubtitle {
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(49, 46, 129, 0.65);
+}
+
+.balanceStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+}
+
+.balanceInfo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(129, 140, 248, 0.18);
+  box-shadow: 0 18px 34px rgba(148, 163, 255, 0.18);
+  color: #312e81;
+}
+
+.balanceInfoPrimary {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: rgba(99, 102, 241, 0.22);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.22);
+}
+
+.balanceInfoSecondary {
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.balanceIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  font-size: 20px;
+  color: white;
+  background: linear-gradient(135deg, #818cf8 0%, #a855f7 100%);
+  box-shadow: 0 10px 18px rgba(129, 140, 248, 0.4);
+  flex-shrink: 0;
+}
+
+.balanceInfoSecondary .balanceIcon {
+  background: linear-gradient(135deg, #fb7185 0%, #f472b6 100%);
+  box-shadow: 0 10px 18px rgba(244, 114, 182, 0.35);
+}
+
+.balanceInfoContent {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .currentGirlCard {
@@ -551,68 +686,78 @@
   background: rgba(124, 58, 237, 0.18);
 }
 
-.balanceInfo {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  color: white;
-}
-
 .balanceLabel {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(49, 46, 129, 0.7);
 }
 
 .balanceValue {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 32px;
+  font-weight: 800;
+  line-height: 1.1;
+  color: #111827;
 }
 
-.balanceValueContainer {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.balanceInfoSecondary {
-  margin-top: 0;
+.balanceCardHint {
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(129, 140, 248, 0.25);
+  font-size: 13px;
+  color: rgba(49, 46, 129, 0.72);
 }
 
 .balanceAddButton {
-  background: rgba(255, 255, 255, 0.2);
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: none;
   cursor: pointer;
-  font-size: 20px;
+  background: linear-gradient(135deg, #ec4899 0%, #6366f1 100%);
   color: white;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  align-self: center;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 20px 40px rgba(236, 72, 153, 0.32);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  white-space: nowrap;
 }
 
 .balanceAddButton:hover {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: scale(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 24px 48px rgba(99, 102, 241, 0.28);
 }
 
 .balanceAddButton:active {
-  transform: scale(0.95);
+  transform: translateY(0);
+}
+
+.balanceAddIcon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
 }
 
 /* Навигация */
 .tabs {
   display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  background: #f5f5f5;
-  padding: 4px;
-  border-radius: 12px;
+  gap: 10px;
+  margin-bottom: 18px;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 255, 0.12);
 }
 
 .tab {
@@ -620,24 +765,24 @@
   padding: 12px 16px;
   border: none;
   background: transparent;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 500;
-  color: #666;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(191, 219, 254, 0.65);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.22s ease;
 }
 
 .tab:hover {
-  color: #333;
-  background: rgba(255, 255, 255, 0.5);
+  color: #fdf4ff;
+  background: rgba(99, 102, 241, 0.08);
 }
 
 .tabActive {
-  background: white;
-  color: #667eea;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(129, 140, 248, 0.32) 0%, rgba(236, 72, 153, 0.32) 100%);
+  color: #f9fafb;
+  font-weight: 700;
+  box-shadow: 0 12px 22px rgba(99, 102, 241, 0.24);
 }
 
 /* Пакеты пополнения */
@@ -651,38 +796,41 @@
   display: flex;
   gap: 12px;
   margin-bottom: 24px;
-  background: white;
-  padding: 8px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: rgba(15, 23, 42, 0.65);
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 255, 0.12);
 }
 
 .paymentMethodButton {
   flex: 1;
-  padding: 12px 16px;
-  background: #f5f5f5;
+  padding: 14px 18px;
+  background: rgba(255, 255, 255, 0.02);
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 12px;
   font-size: 14px;
   font-weight: 600;
-  color: #666;
+  color: rgba(191, 219, 254, 0.72);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .paymentMethodButton:hover {
-  background: #e9e9e9;
+  color: #fdf4ff;
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .paymentMethodButtonActive {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(124, 58, 237, 0.9) 100%);
   color: white;
-  border-color: #667eea;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  border-color: rgba(129, 140, 248, 0.6);
+  box-shadow: 0 14px 28px rgba(99, 102, 241, 0.3);
 }
 
 .paymentMethodButtonDisabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
   position: relative;
   display: flex;
@@ -690,13 +838,14 @@
   justify-content: center;
   gap: 6px;
   flex-wrap: wrap;
-  background: #f5f5f5 !important;
-  border: 2px dashed #ccc !important;
+  background: rgba(148, 163, 255, 0.08) !important;
+  border: 2px dashed rgba(148, 163, 255, 0.3) !important;
+  color: rgba(191, 219, 254, 0.45) !important;
 }
 
 .paymentMethodButtonDisabled:hover {
-  background: #f5f5f5 !important;
-  opacity: 0.7;
+  background: rgba(148, 163, 255, 0.08) !important;
+  opacity: 0.6;
 }
 
 .paymentMethodButtonDisabled:active {
@@ -706,27 +855,30 @@
 .inDevelopmentBadge {
   display: inline-block;
   padding: 3px 10px;
-  background: rgba(255, 152, 0, 0.15);
-  color: #ff9800;
+  background: rgba(253, 224, 71, 0.15);
+  color: #fbbf24;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid rgba(255, 152, 0, 0.4);
+  border: 1px solid rgba(253, 224, 71, 0.4);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .packageCard {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(140deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.9));
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 22px 40px rgba(15, 23, 42, 0.45);
   transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: #e2e8f0;
+  backdrop-filter: blur(8px);
 }
 
 .packageCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 28px 48px rgba(99, 102, 241, 0.25);
 }
 
 .packageHeader {
@@ -745,8 +897,8 @@
 
 .packageName {
   font-size: 20px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #f8fafc;
   margin: 0;
 }
 
@@ -771,8 +923,8 @@
 .packageMessages,
 .packagePhotos {
   font-size: 14px;
-  color: #666;
-  font-weight: 500;
+  color: rgba(191, 219, 254, 0.72);
+  font-weight: 600;
 }
 
 .packagePriceContainer {
@@ -795,51 +947,53 @@
 .oldPrice {
   font-size: 18px;
   font-weight: 500;
-  color: #999;
+  color: rgba(148, 163, 255, 0.65);
   text-decoration: line-through;
   text-decoration-thickness: 2px;
-  text-decoration-color: #ff6b6b;
+  text-decoration-color: rgba(248, 113, 113, 0.8);
 }
 
 .packageStars {
   font-size: 32px;
-  font-weight: 700;
-  color: #667eea;
+  font-weight: 800;
+  color: #c7d2fe;
+  text-shadow: 0 10px 20px rgba(99, 102, 241, 0.35);
 }
 
 .packageStarsLabel {
   font-size: 14px;
-  color: #666;
+  color: rgba(186, 230, 253, 0.75);
 }
 
 .savingsBadge {
-  background: linear-gradient(135deg, #51cf66 0%, #40c057 100%);
+  background: linear-gradient(135deg, rgba(81, 207, 102, 0.85) 0%, rgba(56, 189, 248, 0.85) 100%);
   color: white;
   padding: 8px 12px;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 13px;
   font-weight: 600;
   display: inline-block;
   width: fit-content;
-  box-shadow: 0 2px 4px rgba(81, 207, 102, 0.3);
+  box-shadow: 0 12px 24px rgba(56, 189, 248, 0.3);
 }
 
 .packageButton {
   width: 100%;
-  padding: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 16px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.95) 0%, rgba(129, 140, 248, 0.95) 50%, rgba(236, 72, 153, 0.95) 100%);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 16px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  box-shadow: 0 22px 44px rgba(56, 189, 248, 0.3);
 }
 
 .packageButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transform: translateY(-3px);
+  box-shadow: 0 28px 52px rgba(129, 140, 248, 0.32);
 }
 
 .packageButton:active {
@@ -847,7 +1001,7 @@
 }
 
 .packageButtonDisabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -867,13 +1021,14 @@
 }
 
 .statCard {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.85) 0%, rgba(236, 72, 153, 0.8) 100%);
+  border-radius: 16px;
+  padding: 22px;
   text-align: center;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.25);
   flex: 1 1 180px;
   min-width: 160px;
+  border: 1px solid rgba(148, 163, 255, 0.3);
 }
 
 .statValue {
@@ -890,40 +1045,41 @@
 }
 
 .paymentInfoCard {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(30, 41, 59, 0.88));
+  border-radius: 18px;
+  padding: 22px;
   margin-bottom: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .paymentInfoTitle {
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 16px;
-  color: #333;
+  color: #f8fafc;
 }
 
 .paymentInfoContent {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  color: rgba(226, 232, 240, 0.85);
 }
 
 .paymentInfoContent p {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
-  color: #555;
 }
 
 .paymentInfoNote {
-  background: #f0f7ff;
+  background: rgba(99, 102, 241, 0.14);
   padding: 12px;
-  border-radius: 8px;
-  border-left: 4px solid #667eea;
+  border-radius: 10px;
+  border-left: 4px solid rgba(129, 140, 248, 0.6);
   font-size: 13px !important;
-  color: #444 !important;
+  color: rgba(226, 232, 240, 0.88) !important;
 }
 
 .usersList {
@@ -933,42 +1089,44 @@
 }
 
 .userCard {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(140deg, rgba(17, 24, 39, 0.92), rgba(30, 41, 59, 0.88));
+  border-radius: 18px;
+  padding: 22px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.38);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: #f1f5f9;
 }
 
 .userCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transform: translateY(-3px);
+  box-shadow: 0 26px 50px rgba(99, 102, 241, 0.28);
 }
 
 .userHeader {
   margin-bottom: 16px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(148, 163, 255, 0.15);
 }
 
 .userName {
   font-size: 18px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #f9fafb;
   margin-bottom: 4px;
 }
 
 .username {
   font-size: 14px;
-  color: #666;
+  color: rgba(191, 219, 254, 0.7);
   margin-left: 8px;
   font-weight: normal;
 }
 
 .userId {
   font-size: 12px;
-  color: #999;
+  color: rgba(148, 163, 255, 0.8);
   font-family: monospace;
 }
 
@@ -987,13 +1145,13 @@
 
 .infoLabel {
   font-size: 14px;
-  color: #666;
+  color: rgba(191, 219, 254, 0.65);
 }
 
 .infoValue {
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: #f8fafc;
 }
 
 .userCardActions {
@@ -1003,26 +1161,26 @@
 }
 
 .userCardButton {
-  padding: 8px 14px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  padding: 10px 16px;
+  background: linear-gradient(135deg, rgba(236, 72, 153, 0.95), rgba(129, 140, 248, 0.95));
   border: none;
-  border-radius: 8px;
+  border-radius: 12px;
   color: #fff;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 16px 28px rgba(129, 140, 248, 0.35);
   transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
 }
 
 .userCardButton:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(102, 126, 234, 0.35);
+  transform: translateY(-2px);
+  box-shadow: 0 22px 40px rgba(236, 72, 153, 0.3);
 }
 
 .userCardButton:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 16px 28px rgba(129, 140, 248, 0.25);
 }
 
 .userCardButton:disabled {
@@ -1034,24 +1192,25 @@
 .empty {
   text-align: center;
   padding: 40px 20px;
-  color: #999;
+  color: rgba(148, 163, 255, 0.6);
   font-size: 16px;
 }
 
 .backButton {
-  padding: 10px 20px;
+  padding: 12px 22px;
   margin-bottom: 20px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  color: #333;
+  background: rgba(99, 102, 241, 0.18);
+  border: 1px solid rgba(129, 140, 248, 0.4);
+  border-radius: 12px;
+  font-size: 15px;
+  color: #f8fafc;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 16px 28px rgba(99, 102, 241, 0.25);
 }
 
 .backButton:hover {
-  background: #e0e0e0;
+  background: rgba(129, 140, 248, 0.28);
 }
 
 .userDetail {
@@ -1061,25 +1220,28 @@
 }
 
 .userDetailHeader {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.92), rgba(30, 41, 59, 0.88));
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 24px 44px rgba(15, 23, 42, 0.42);
+  border: 1px solid rgba(99, 102, 241, 0.2);
 }
 
 .userDetailHeader h2 {
   font-size: 24px;
-  font-weight: 600;
-  color: #333;
+  font-weight: 700;
+  color: #f8fafc;
   margin-bottom: 8px;
 }
 
 .userDetailTabs {
   display: flex;
   gap: 8px;
-  background: #f5f5f5;
-  padding: 4px;
-  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.65);
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.16);
+  backdrop-filter: blur(10px);
 }
 
 .detailTab {
@@ -1087,33 +1249,35 @@
   padding: 12px 16px;
   border: none;
   background: transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   font-size: 14px;
-  font-weight: 500;
-  color: #666;
+  font-weight: 600;
+  color: rgba(191, 219, 254, 0.7);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .detailTab:hover {
-  color: #333;
-  background: rgba(255, 255, 255, 0.5);
+  color: #fdf4ff;
+  background: rgba(99, 102, 241, 0.12);
 }
 
 .detailTabActive {
-  background: white;
-  color: #667eea;
-  font-weight: 600;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.9), rgba(124, 58, 237, 0.88));
+  color: #f9fafb;
+  font-weight: 700;
+  box-shadow: 0 16px 28px rgba(129, 140, 248, 0.28);
 }
 
 .userDetailContent {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88));
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 22px 44px rgba(15, 23, 42, 0.4);
   max-height: 500px;
   overflow-y: auto;
+  border: 1px solid rgba(99, 102, 241, 0.18);
+  color: rgba(226, 232, 240, 0.9);
 }
 
 .userDetailInfo {
@@ -1124,26 +1288,27 @@
 
 .grantCard {
   margin-top: 24px;
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, rgba(17, 24, 39, 0.9), rgba(30, 41, 59, 0.86));
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.38);
   display: flex;
   flex-direction: column;
   gap: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.18);
 }
 
 .grantCard h3 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #f8fafc;
 }
 
 .grantDescription {
   margin: 0;
   font-size: 14px;
-  color: #555;
+  color: rgba(226, 232, 240, 0.82);
   line-height: 1.5;
 }
 
@@ -1163,45 +1328,46 @@
   flex: 1;
   min-width: 140px;
   padding: 12px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 255, 0.25);
+  border-radius: 10px;
   font-size: 16px;
-  color: #333;
-  background: #fdfdfd;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .grantInput:disabled {
-  background: #f5f5f5;
+  background: rgba(30, 41, 59, 0.6);
 }
 
 .grantReasonInput {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 255, 0.25);
+  border-radius: 10px;
   font-size: 14px;
-  color: #333;
-  background: #fdfdfd;
+  color: #f8fafc;
+  background: rgba(15, 23, 42, 0.7);
 }
 
 .grantReasonInput:disabled {
-  background: #f5f5f5;
+  background: rgba(30, 41, 59, 0.6);
 }
 
 .grantButton {
   padding: 12px 20px;
   border: none;
-  border-radius: 8px;
-  background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(56, 189, 248, 0.95));
   color: white;
   font-weight: 600;
   font-size: 16px;
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 20px 36px rgba(56, 189, 248, 0.28);
 }
 
 .grantButton:disabled {
-  opacity: 0.7;
+  opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
   transform: none;
@@ -1209,23 +1375,25 @@
 
 .grantButton:not(:disabled):hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 14px rgba(72, 187, 120, 0.35);
+  box-shadow: 0 26px 46px rgba(16, 185, 129, 0.32);
 }
 
 .grantError {
   font-size: 14px;
-  color: #d14343;
-  background: #fde8e8;
-  border-radius: 8px;
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.22);
+  border-radius: 10px;
   padding: 10px 12px;
+  border: 1px solid rgba(248, 113, 113, 0.35);
 }
 
 .grantSuccess {
   font-size: 14px;
-  color: #107154;
-  background: #e6f4ea;
-  border-radius: 8px;
+  color: #bbf7d0;
+  background: rgba(16, 185, 129, 0.16);
+  border-radius: 10px;
   padding: 10px 12px;
+  border: 1px solid rgba(74, 222, 128, 0.28);
 }
 
 .infoItem {
@@ -1233,7 +1401,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  border-bottom: 1px solid rgba(148, 163, 255, 0.12);
 }
 
 .infoItem:last-child {
@@ -1247,16 +1415,18 @@
 }
 
 .chatCard {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 16px;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 14px;
+  padding: 18px;
   margin-bottom: 16px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 255, 0.12);
 }
 
 .chatCard h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #f9fafb;
   margin-bottom: 12px;
 }
 
@@ -1271,9 +1441,10 @@
 .message {
   display: flex;
   gap: 8px;
-  padding: 8px;
-  background: white;
-  border-radius: 8px;
+  padding: 10px;
+  background: rgba(30, 41, 59, 0.85);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.12);
 }
 
 .messageRole {
@@ -1283,7 +1454,7 @@
 
 .messageContent {
   font-size: 14px;
-  color: #333;
+  color: rgba(226, 232, 240, 0.85);
   line-height: 1.5;
   white-space: pre-wrap;
   word-wrap: break-word;
@@ -1296,9 +1467,11 @@
 }
 
 .paymentCard {
-  background: #f9f9f9;
-  border-radius: 8px;
-  padding: 16px;
+  background: rgba(15, 23, 42, 0.75);
+  border-radius: 14px;
+  padding: 18px;
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  box-shadow: inset 0 1px 0 rgba(148, 163, 255, 0.12);
 }
 
 .paymentHeader {
@@ -1307,13 +1480,13 @@
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid rgba(148, 163, 255, 0.14);
 }
 
 .paymentHeader h3 {
   font-size: 18px;
   font-weight: 600;
-  color: #333;
+  color: #f8fafc;
   margin: 0;
 }
 
@@ -1322,6 +1495,6 @@
   flex-direction: column;
   gap: 8px;
   font-size: 14px;
-  color: #666;
+  color: rgba(191, 219, 254, 0.78);
 }
 

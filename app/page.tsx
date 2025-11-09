@@ -547,31 +547,44 @@ export default function Home() {
 
           {(balance !== null || photoBalance !== null) && (
             <div className={styles.balanceCard}>
+              <div className={styles.balanceCardHeader}>
+                <div className={styles.balanceCardTitleGroup}>
+                  <span className={styles.balanceCardTitle}>Ваш баланс</span>
+                  <span className={styles.balanceCardSubtitle}>
+                    Сообщения и фото доступны мгновенно после покупки
+                  </span>
+                </div>
+                {balance !== null && (
+                  <button
+                    className={styles.balanceAddButton}
+                    onClick={() => setActiveTab('topup')}
+                    title="Пополнить баланс"
+                  >
+                    <span className={styles.balanceAddIcon}>➕</span>
+                    Пополнить
+                  </button>
+                )}
+              </div>
               <div className={styles.balanceStats}>
                 {balance !== null && (
-                  <div className={styles.balanceInfo}>
-                    <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
-                    <span className={styles.balanceValue}>{balance}</span>
+                  <div className={`${styles.balanceInfo} ${styles.balanceInfoPrimary}`}>
+                    <div className={styles.balanceIcon}>💬</div>
+                    <div className={styles.balanceInfoContent}>
+                      <span className={styles.balanceLabel}>Сообщений доступно</span>
+                      <span className={styles.balanceValue}>{balance}</span>
+                    </div>
                   </div>
                 )}
-
                 {photoBalance !== null && (
                   <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
-                    <span className={styles.balanceLabel}>📸 Доступно фото:</span>
-                    <span className={styles.balanceValue}>{photoBalance}</span>
+                    <div className={styles.balanceIcon}>📸</div>
+                    <div className={styles.balanceInfoContent}>
+                      <span className={styles.balanceLabel}>Фото доступно</span>
+                      <span className={styles.balanceValue}>{photoBalance}</span>
+                    </div>
                   </div>
                 )}
               </div>
-
-              {balance !== null && (
-                <button
-                  className={styles.balanceAddButton}
-                  onClick={() => setActiveTab('topup')}
-                  title="Пополнить баланс"
-                >
-                  ➕
-                </button>
-              )}
             </div>
           )}
           
@@ -636,19 +649,38 @@ export default function Home() {
           <h1 className={styles.title}>Пополнение баланса</h1>
           
           {(balance !== null || photoBalance !== null) && (
-            <div className={styles.balanceCard}>
-              {balance !== null && (
-                <div className={styles.balanceInfo}>
-                  <span className={styles.balanceLabel}>💬 Текущий баланс:</span>
-                  <span className={styles.balanceValue}>{balance}</span>
+            <div className={`${styles.balanceCard} ${styles.balanceCardAlt}`}>
+              <div className={styles.balanceCardHeader}>
+                <div className={styles.balanceCardTitleGroup}>
+                  <span className={styles.balanceCardTitle}>Текущие остатки</span>
+                  <span className={styles.balanceCardSubtitle}>
+                    Обновятся автоматически сразу после оплаты
+                  </span>
                 </div>
-              )}
-              {photoBalance !== null && (
-                <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
-                  <span className={styles.balanceLabel}>📸 Доступно фото:</span>
-                  <span className={styles.balanceValue}>{photoBalance}</span>
-                </div>
-              )}
+              </div>
+              <div className={styles.balanceStats}>
+                {balance !== null && (
+                  <div className={`${styles.balanceInfo} ${styles.balanceInfoPrimary}`}>
+                    <div className={styles.balanceIcon}>💬</div>
+                    <div className={styles.balanceInfoContent}>
+                      <span className={styles.balanceLabel}>Сообщений доступно</span>
+                      <span className={styles.balanceValue}>{balance}</span>
+                    </div>
+                  </div>
+                )}
+                {photoBalance !== null && (
+                  <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
+                    <div className={styles.balanceIcon}>📸</div>
+                    <div className={styles.balanceInfoContent}>
+                      <span className={styles.balanceLabel}>Фото доступно</span>
+                      <span className={styles.balanceValue}>{photoBalance}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className={styles.balanceCardHint}>
+                ⚡ Telegram Stars зачисляются за несколько секунд после оплаты
+              </div>
             </div>
           )}
 
