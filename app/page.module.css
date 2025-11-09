@@ -437,6 +437,17 @@
   padding: 16px 20px;
   margin-bottom: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.balanceStats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
 }
 
 .currentGirlCard {
@@ -543,7 +554,7 @@
 .balanceInfo {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   color: white;
 }
 
@@ -564,7 +575,7 @@
 }
 
 .balanceInfoSecondary {
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .balanceAddButton {
@@ -581,6 +592,7 @@
   color: white;
   transition: all 0.2s;
   flex-shrink: 0;
+  align-self: center;
 }
 
 .balanceAddButton:hover {

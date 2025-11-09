@@ -528,22 +528,6 @@ export default function Home() {
                 >
                   Посмотреть профиль
                 </button>
-                <button
-                  type="button"
-                  className={styles.changeGirlButton}
-                  onClick={() => {
-                    setIsChangeMode(true)
-                    if (typeof window !== 'undefined' && window.Telegram?.WebApp?.HapticFeedback) {
-                      try {
-                        window.Telegram.WebApp.HapticFeedback.notificationOccurred('success')
-                      } catch (error) {
-                        console.warn('Haptic feedback недоступен:', error)
-                      }
-                    }
-                  }}
-                >
-                  Сменить девушку
-                </button>
               </div>
             </div>
           )}
@@ -563,29 +547,30 @@ export default function Home() {
 
           {(balance !== null || photoBalance !== null) && (
             <div className={styles.balanceCard}>
-              {balance !== null && (
-                <div className={styles.balanceInfo}>
-                  <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
-                  <div className={styles.balanceValueContainer}>
+              <div className={styles.balanceStats}>
+                {balance !== null && (
+                  <div className={styles.balanceInfo}>
+                    <span className={styles.balanceLabel}>💬 Доступно сообщений:</span>
                     <span className={styles.balanceValue}>{balance}</span>
-                    <button
-                      className={styles.balanceAddButton}
-                      onClick={() => setActiveTab('topup')}
-                      title="Пополнить баланс"
-                    >
-                      ➕
-                    </button>
                   </div>
-                </div>
-              )}
+                )}
 
-              {photoBalance !== null && (
-                <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
-                  <span className={styles.balanceLabel}>📸 Доступно фото:</span>
-                  <div className={styles.balanceValueContainer}>
+                {photoBalance !== null && (
+                  <div className={`${styles.balanceInfo} ${styles.balanceInfoSecondary}`}>
+                    <span className={styles.balanceLabel}>📸 Доступно фото:</span>
                     <span className={styles.balanceValue}>{photoBalance}</span>
                   </div>
-                </div>
+                )}
+              </div>
+
+              {balance !== null && (
+                <button
+                  className={styles.balanceAddButton}
+                  onClick={() => setActiveTab('topup')}
+                  title="Пополнить баланс"
+                >
+                  ➕
+                </button>
               )}
             </div>
           )}
