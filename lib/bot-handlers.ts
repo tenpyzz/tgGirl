@@ -16,8 +16,8 @@ const MINI_APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.WEBAPP_URL |
 
 const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото')
 const REQUEST_PHOTO_ACTION = 'request_photo'
-const MAX_HISTORY_MESSAGES_FETCH = 60
-const MAX_HISTORY_CHARACTERS = 3000
+const MAX_HISTORY_MESSAGES_FETCH = 40
+const MAX_HISTORY_CHARACTERS = 2200
 
 let sharedPhotoFilesCache: string[] | null = null
 
@@ -48,7 +48,7 @@ function buildPersonaPrompt(girlId: number, girlName: string): string {
   const pleasures = profile.pleasures.join('; ')
   const hooks = profile.conversationHooks.join('; ')
 
-  return `Тебя зовут ${girlName}, тебе ${profile.age} лет, твой образ — ${profile.archetype}. Характер: ${profile.personality}. Главное желание: ${profile.desires}. Тебя особенно заводит: ${pleasures}. Любимые темы: ${hooks}. Твоя фирменная фраза: "${profile.openingLine}". Забавный факт: ${profile.funFact}.`
+  return `${girlName}, ${profile.age}, ${profile.archetype}. Настрой: ${profile.personality} Желание: ${profile.desires} Любит: ${pleasures}. Темы: ${hooks}.`
 }
 
 function buildFallbackFirstMessage(girlName: string): string {
@@ -315,10 +315,10 @@ async function generateFirstMessage(userId: number, girlId: number): Promise<str
 
   // Создаем специальный промпт для первого сообщения
   const firstMessagePersona = buildPersonaPrompt(girl.id, girl.name)
-  const firstMessagePrompt = `Ты — ${girl.name}. Вы с пользователем рядом, говорите голосом и можете касаться друг друга. Никаких телефонов или переписок.
-Ответ строго в формате: первая строка — действие в *звёздочках*, затем пустая строка и 2–3 короткие фразы (до 12 слов) обычным текстом. Весь ответ не длиннее 70 слов. Будь смелой, эротичной, описывай ощущения и взаимное согласие. Сначала реагируй на его слова и присутствие, затем флиртуй.
-Помни о себе: ${firstMessagePersona}
-Стиль общения: ${girl.systemPrompt}`
+  const firstMessagePrompt = `Ты — ${girl.name}. Вы рядом, говорите вслух, можете касаться друг друга. Никаких телефонов или переписок.
+Формат: строка действия в *звёздочках*, пустая строка, затем 2–3 короткие фразы (до 12 слов) обычным текстом. Весь ответ не длиннее 70 слов. Сначала реагируй на его слова и присутствие, затем флиртуй, описывая ощущения и взаимное согласие.
+Характер: ${firstMessagePersona}
+Стиль: ${girl.systemPrompt}`
 
   // Генерируем первое сообщение через OpenRouter
   console.log('[generateFirstMessage] Отправка запроса к OpenRouter API...')
@@ -444,9 +444,9 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   // КРИТИЧЕСКИ ВАЖНО: Сначала инструкции о том, что нужно слушать пользователя
   const personaPrompt = buildPersonaPrompt(girl.id, girl.name)
   const enhancedSystemPrompt = `Ты — ${girl.name}. Вы рядом, говорите голосом, никаких телефонов или переписок; ты видишь его реакцию и можешь прикасаться.
-Главные правила: отвечай прямо на слова пользователя, не уходя в сторону. Формат ответа — строка действия в *звёздочках*, пустая строка, затем 1–3 короткие фразы (до 12 слов) обычным текстом. Общая длина не больше 80 слов. Будь смелой и эротичной, описывай прикосновения, ощущения и взаимное согласие.
-Помни о себе: ${personaPrompt}
-Стиль общения: ${girl.systemPrompt}`
+Ответ держи коротким: строка действия в *звёздочках*, пустая строка, затем 1–3 фразы (до 12 слов) обычным текстом. Общая длина ≤80 слов. Отвечай прямо на его слова, описывай прикосновения, эмоции и взаимное согласие.
+Характер: ${personaPrompt}
+Стиль: ${girl.systemPrompt}`
 
   // Формируем массив сообщений для ИИ
   const orderedHistory = chatHistory.slice().reverse()
@@ -536,10 +536,10 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
   }
 
   const photoPersona = buildPersonaPrompt(girl.id, girl.name)
-  const photoSystemPrompt = `Ты — ${girl.name}. Вы рядом, и ты показываешь пользователю своё откровенное фото прямо в руках. Никаких телефонов или переписок.
+  const photoSystemPrompt = `Ты — ${girl.name}. Вы рядом, и ты держишь своё откровенное фото прямо перед пользователем. Никаких телефонов или переписок.
 Формат: строка действия в *звёздочках*, пустая строка, затем ровно одно короткое предложение (до 12 слов) обычным текстом. Общая длина не больше 50 слов. Опиши кадр, свои ощущения и подчёркни взаимное согласие.
-Помни о себе: ${photoPersona}
-Стиль общения: ${girl.systemPrompt}`
+Характер: ${photoPersona}
+Стиль: ${girl.systemPrompt}`
 
   const orderedHistory = chatHistory.slice().reverse()
 
