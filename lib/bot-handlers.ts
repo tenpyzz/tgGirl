@@ -797,9 +797,18 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
 
     await bot.sendChatAction(chatId, 'upload_photo')
 
-    const response = await generatePhotoResponse(chatRecord.id, user.selectedGirlId)
-    const trimmedResponse = response.trim()
-    const caption = trimmedResponse.length <= 1024 ? trimmedResponse : undefined
+    let aiPhotoResponse = buildFallbackPhotoResponse()
+    try {
+      const response = await generatePhotoResponse(chatRecord.id, user.selectedGirlId)
+      const trimmed = response.trim()
+      if (trimmed.length > 0) {
+        aiPhotoResponse = trimmed
+      }
+    } catch (responseError) {
+      console.error('[handlePhotoRequest] Ошибка генерации описания фото, используем fallback:', responseError)
+    }
+
+    const caption = aiPhotoResponse.length <= 1024 ? aiPhotoResponse : undefined
 
     const photoData = await preparePhotoForTelegram(sharedPhoto.filePath, sharedPhoto.contentType)
     const telegramPhoto: TelegramInputFile = {
@@ -814,7 +823,7 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
     })
 
     if (!caption) {
-      await bot.sendMessage(chatId, trimmedResponse, {
+      await bot.sendMessage(chatId, aiPhotoResponse, {
         reply_markup: getConversationInlineKeyboard(),
       })
     }
