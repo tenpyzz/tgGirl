@@ -1,4 +1,4 @@
-import { promises as fsPromises } from 'fs'
+import { createReadStream, promises as fsPromises } from 'fs'
 import path from 'path'
 import { bot } from './telegram'
 import TelegramBot from 'node-telegram-bot-api'
@@ -9,6 +9,8 @@ import { PACKAGES, getPackageUsdPrice, type PackageId } from './packages'
 import { getGirlPhotoPath } from './default-girls'
 import { getGirlProfile } from './girl-profiles'
 import sharp from 'sharp'
+import os from 'os'
+import { randomUUID } from 'crypto'
 
 // Регистрация обработчиков бота
 
@@ -35,6 +37,14 @@ type TelegramInputFile = {
   source: Buffer
   filename?: string
   contentType?: string
+}
+
+type PreparedPhoto = {
+  buffer: Buffer
+  filename: string
+  contentType: string
+  originalFilePath: string
+  tempFilePath: string | null
 }
 
 async function safeCreateChatCompletion(
@@ -184,13 +194,14 @@ async function ensureSharedPhotoFiles(): Promise<string[]> {
 async function preparePhotoForTelegram(
   filePath: string,
   originalContentType: string
-): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
+): Promise<PreparedPhoto> {
   const originalBuffer = await fsPromises.readFile(filePath)
   const parsedPath = path.parse(filePath)
 
   let buffer = originalBuffer
   let filename = parsedPath.base
   let contentType = originalContentType
+  let tempFilePath: string | null = null
 
   try {
     const baseImage = sharp(originalBuffer, { failOnError: false })
@@ -218,6 +229,16 @@ async function preparePhotoForTelegram(
     buffer = Buffer.from(processedBuffer)
     filename = `${parsedPath.name}.jpg`
     contentType = 'image/jpeg'
+
+    try {
+      const tempDir = path.join(os.tmpdir(), 'tg-miniapp-photos')
+      await fsPromises.mkdir(tempDir, { recursive: true })
+      tempFilePath = path.join(tempDir, `${parsedPath.name}-${randomUUID()}.jpg`)
+      await fsPromises.writeFile(tempFilePath, buffer)
+    } catch (tempError) {
+      tempFilePath = null
+      console.warn('[preparePhotoForTelegram] Не удалось записать временный файл:', tempError)
+    }
   } catch (processingError) {
     console.warn(
       `[preparePhotoForTelegram] Не удалось обработать изображение ${filePath}, используем оригинал:`,
@@ -225,7 +246,7 @@ async function preparePhotoForTelegram(
     )
   }
 
-  return { buffer, filename, contentType }
+  return { buffer, filename, contentType, originalFilePath: filePath, tempFilePath }
 }
 
 async function getRandomSharedPhoto(): Promise<{ filePath: string; contentType: string } | null> {
@@ -249,6 +270,46 @@ async function getRandomSharedPhoto(): Promise<{ filePath: string; contentType: 
   return {
     filePath: path.join(SHARED_PHOTOS_DIR, filename),
     contentType,
+  }
+}
+
+async function sendPreparedPhoto(
+  chatId: number,
+  photoData: PreparedPhoto,
+  options: TelegramBot.SendPhotoOptions
+): Promise<void> {
+  const cleanup = async () => {
+    if (photoData.tempFilePath) {
+      try {
+        await fsPromises.unlink(photoData.tempFilePath)
+      } catch {
+        // ignore cleanup errors
+      }
+    }
+  }
+
+  const primaryPayload: TelegramInputFile = {
+    source: photoData.buffer,
+    filename: photoData.filename,
+    contentType: photoData.contentType,
+  }
+
+  try {
+    await bot.sendPhoto(chatId, primaryPayload as any, options)
+    await cleanup()
+    return
+  } catch (primaryError) {
+    console.error('[sendPreparedPhoto] Ошибка отправки обработанного фото, пробуем оригинал:', primaryError)
+  }
+
+  try {
+    const fallbackSource = createReadStream(photoData.tempFilePath || photoData.originalFilePath)
+    await bot.sendPhoto(chatId, fallbackSource, options)
+  } catch (fallbackError) {
+    console.error('[sendPreparedPhoto] Резервная отправка фото тоже не удалась:', fallbackError)
+    throw fallbackError
+  } finally {
+    await cleanup()
   }
 }
 
@@ -355,13 +416,8 @@ export async function sendFirstMessageToUser(
         }
 
         const photoData = await preparePhotoForTelegram(girlPhoto.filePath, girlPhoto.contentType)
-        const telegramPhoto: TelegramInputFile = {
-          source: photoData.buffer,
-          filename: photoData.filename,
-          contentType: photoData.contentType,
-        }
 
-        await bot.sendPhoto(telegramUserId, telegramPhoto as any, photoOptions)
+        await sendPreparedPhoto(telegramUserId, photoData, photoOptions)
 
         if (!caption) {
           await bot.sendMessage(telegramUserId, firstMessage, {
@@ -855,13 +911,8 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
     const caption = aiPhotoResponse.length <= 1024 ? aiPhotoResponse : undefined
 
     const photoData = await preparePhotoForTelegram(sharedPhoto.filePath, sharedPhoto.contentType)
-    const telegramPhoto: TelegramInputFile = {
-      source: photoData.buffer,
-      filename: photoData.filename,
-      contentType: photoData.contentType,
-    }
 
-    await bot.sendPhoto(chatId, telegramPhoto as any, {
+    await sendPreparedPhoto(chatId, photoData, {
       caption,
       reply_markup: getConversationInlineKeyboard(),
     })
