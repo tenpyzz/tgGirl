@@ -19,8 +19,15 @@ const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото
 const REQUEST_PHOTO_ACTION = 'request_photo'
 const MAX_HISTORY_MESSAGES_FETCH = 20
 const MAX_HISTORY_CHARACTERS = 2200
+const MAX_PHOTO_HISTORY_CHARACTERS = 1200
 
 let sharedPhotoFilesCache: string[] | null = null
+
+type TelegramInputFile = {
+  source: Buffer
+  filename?: string
+  contentType?: string
+}
 
 function isPromptLimitError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
@@ -306,16 +313,13 @@ export async function sendFirstMessageToUser(
         }
 
         const photoData = await preparePhotoForTelegram(girlPhoto.filePath, girlPhoto.contentType)
+        const telegramPhoto: TelegramInputFile = {
+          source: photoData.buffer,
+          filename: photoData.filename,
+          contentType: photoData.contentType,
+        }
 
-        await bot.sendPhoto(
-          telegramUserId,
-          photoData.buffer,
-          photoOptions,
-          {
-            filename: photoData.filename,
-            contentType: photoData.contentType,
-          }
-        )
+        await bot.sendPhoto(telegramUserId, telegramPhoto as any, photoOptions)
 
         if (!caption) {
           await bot.sendMessage(telegramUserId, firstMessage, {
@@ -502,7 +506,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     content: message.content,
   }))
 
-  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_HISTORY_CHARACTERS)
+  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_PHOTO_HISTORY_CHARACTERS)
 
   const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
     (message) => ({
@@ -606,7 +610,7 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
     content: message.content,
   }))
 
-  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_HISTORY_CHARACTERS)
+  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_PHOTO_HISTORY_CHARACTERS)
 
   const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
     (message) => ({
@@ -618,7 +622,7 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
   let response: string | null = null
   let attemptHistory = historyMessagesForCompletion
 
-  for (let attempt = 0; attempt < 3 && !response; attempt++) {
+  for (let attempt = 0; attempt < 2 && !response; attempt++) {
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: 'system',
@@ -798,19 +802,16 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
     const caption = trimmedResponse.length <= 1024 ? trimmedResponse : undefined
 
     const photoData = await preparePhotoForTelegram(sharedPhoto.filePath, sharedPhoto.contentType)
+    const telegramPhoto: TelegramInputFile = {
+      source: photoData.buffer,
+      filename: photoData.filename,
+      contentType: photoData.contentType,
+    }
 
-    await bot.sendPhoto(
-      chatId,
-      photoData.buffer,
-      {
-        caption,
-        reply_markup: getConversationInlineKeyboard(),
-      },
-      {
-        filename: photoData.filename,
-        contentType: photoData.contentType,
-      }
-    )
+    await bot.sendPhoto(chatId, telegramPhoto as any, {
+      caption,
+      reply_markup: getConversationInlineKeyboard(),
+    })
 
     if (!caption) {
       await bot.sendMessage(chatId, trimmedResponse, {
