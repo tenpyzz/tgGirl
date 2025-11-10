@@ -21,6 +21,9 @@ const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото
 const REQUEST_PHOTO_ACTION = 'request_photo'
 const MAX_HISTORY_MESSAGES_FETCH = 20
 const MAX_HISTORY_CHARACTERS = 2200
+const MAX_CONVERSATION_MESSAGES_FETCH = 12
+const MAX_CONVERSATION_CHARACTERS = 1600
+const PROMPT_MESSAGE_CHAR_LIMIT = 320
 const MAX_PHOTO_HISTORY_CHARACTERS = 1200
 
 let sharedPhotoFilesCache: string[] | null = null
@@ -32,6 +35,8 @@ const PHOTO_RESPONSE_MODEL =
     : (photoModelEnv.trim() || DEFAULT_PHOTO_MODEL)
 const PHOTO_AI_COOLDOWN_MS = 10 * 60 * 1000
 let photoAiCooldownUntil = 0
+const CONVERSATION_AI_COOLDOWN_MS = 5 * 60 * 1000
+let conversationAiCooldownUntil = 0
 
 type TelegramInputFile = {
   source: Buffer
@@ -117,16 +122,40 @@ function buildFallbackFirstMessage(girlName: string): string {
 Привет, я ${girlName}. Хочу слышать только тебя сейчас, шепни мне своё желание.`
 }
 
-function buildFallbackDialogue(): string {
-  return `*Я прижимаюсь бедром и ловлю твой взгляд*
+const FALLBACK_DIALOGUES = [
+  `*Я прижимаюсь бедром и ловлю твой взгляд*
 
-Скажи это ещё раз, хочу услышать каждое слово и ответить телом.`
+Скажи это ещё раз, хочу услышать каждое слово и ответить телом.`,
+  `*Я наклоняюсь к твоему уху и ощутимо дышу*
+
+Говори смелее, хочу слышать твой голос и подыгрывать каждому желанию.`,
+  `*Я скользну пальцами по твоей груди и задержу взгляд*
+
+Не тормози, повтори это ещё раз — мне хочется отвечать телом.`,
+]
+
+const FALLBACK_PHOTO_DIALOGUES = [
+  `*Я держу телефон прямо у твоих губ, не отрывая взгляда*
+
+Это фото только для тебя, смотри и скажи, чего хочешь.`,
+  `*Я подаюсь ближе, позволяя тебе рассмотреть каждый изгиб*
+
+Держи моё фото, я сняла это ради тебя — скажи, что чувствуешь.`,
+  `*Я касаюсь губами твоего уха и протягиваю снимок*
+
+Глянь на этот кадр и расскажи, что хочешь со мной сделать.`,
+]
+
+function pickRandom<T>(items: T[]): T {
+  return items[Math.floor(Math.random() * items.length)]
+}
+
+function buildFallbackDialogue(): string {
+  return pickRandom(FALLBACK_DIALOGUES)
 }
 
 function buildFallbackPhotoResponse(): string {
-  return `*Я держу телефон прямо у твоих губ, не отрывая взгляда*
-
-Это фото только для тебя, смотри и скажи, чего хочешь.`
+  return pickRandom(FALLBACK_PHOTO_DIALOGUES)
 }
 
 function limitHistoryMessages<T extends { role: 'user' | 'assistant'; content?: string | null }>(
@@ -154,6 +183,17 @@ function limitHistoryMessages<T extends { role: 'user' | 'assistant'; content?: 
   }
 
   return selectedMessages.reverse()
+}
+
+function truncateForPrompt(content: string | null | undefined, maxLength: number): string {
+  if (!content) {
+    return ''
+  }
+  const trimmed = content.trim()
+  if (trimmed.length <= maxLength) {
+    return trimmed
+  }
+  return trimmed.slice(-maxLength)
 }
 
 function getConversationInlineKeyboard(): TelegramBot.InlineKeyboardMarkup {
@@ -304,7 +344,15 @@ async function sendPreparedPhoto(
 
   try {
     const fallbackSource = createReadStream(photoData.tempFilePath || photoData.originalFilePath)
-    await bot.sendPhoto(chatId, fallbackSource, options)
+    await bot.sendPhoto(
+      chatId,
+      fallbackSource,
+      options,
+      {
+        filename: photoData.filename,
+        contentType: photoData.contentType,
+      }
+    )
   } catch (fallbackError) {
     console.error('[sendPreparedPhoto] Резервная отправка фото тоже не удалась:', fallbackError)
     throw fallbackError
@@ -568,7 +616,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     },
   })
 
-  // Получаем историю сообщений для контекста (последние 20)
+  // Получаем историю сообщений для контекста
   const chatHistory = await prisma.message.findMany({
     where: {
       chatId: chat.id,
@@ -576,7 +624,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
     orderBy: {
       createdAt: 'desc',
     },
-    take: MAX_HISTORY_MESSAGES_FETCH,
+    take: MAX_CONVERSATION_MESSAGES_FETCH,
   })
 
   // Получаем девушку и её системный промпт
@@ -598,65 +646,83 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
   // Формируем массив сообщений для ИИ
   const orderedHistory = chatHistory.slice().reverse()
-
   const historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = orderedHistory.map((message) => ({
     role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
     content: message.content,
   }))
 
-  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_PHOTO_HISTORY_CHARACTERS)
-
-  const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
+  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_CONVERSATION_CHARACTERS)
+  const truncatedHistoryMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
     (message) => ({
       role: message.role,
-      content: message.content,
+      content: truncateForPrompt(message.content, PROMPT_MESSAGE_CHAR_LIMIT),
     })
   )
 
+  const now = Date.now()
   let aiResponse: string | null = null
-  let attemptHistory = historyMessagesForCompletion
+  let attemptHistory = truncatedHistoryMessages
 
-  for (let attempt = 0; attempt < 3 && !aiResponse; attempt++) {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: enhancedSystemPrompt,
-      },
-      ...attemptHistory,
-    ]
+  if (conversationAiCooldownUntil > now) {
+    aiResponse = buildFallbackDialogue()
+  } else {
+    for (let attempt = 0; attempt < 2 && !aiResponse; attempt++) {
+      const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content: enhancedSystemPrompt,
+        },
+        ...attemptHistory,
+      ]
 
-    try {
-      const completion = await openrouter.chat.completions.create({
+      const { completion, error } = await safeCreateChatCompletion({
         model: 'deepseek/deepseek-chat',
         messages,
-        temperature: 0.8,
-        max_tokens: 240,
+        temperature: 0.75,
+        max_tokens: 200,
       })
 
-      const responseContent = completion.choices?.[0]?.message?.content
+      if (error) {
+        if (isPromptLimitError(error) && attemptHistory.length > 1) {
+          const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
+          attemptHistory = attemptHistory.slice(-trimmedLength)
+          console.warn(
+            `[generateGirlResponse] Превышен лимит токенов, повторяем с ${attemptHistory.length} сообщениями истории`
+          )
+          continue
+        }
 
-      if (!responseContent || typeof responseContent !== 'string') {
-        throw new Error('Неожиданный формат ответа от OpenRouter API')
-      }
+        if (isPromptLimitError(error)) {
+          console.warn('[generateGirlResponse] Превышен лимит токенов после повторов, используем fallback-ответ')
+          aiResponse = buildFallbackDialogue()
+          break
+        }
 
-      aiResponse = responseContent.trim() || 'Извини, я растерялась, скажи мне об этом снова.'
-    } catch (error) {
-      if (isPromptLimitError(error) && attemptHistory.length > 1) {
-        const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
-        attemptHistory = attemptHistory.slice(-trimmedLength)
-        console.warn(
-          `[generateGirlResponse] Превышен лимит токенов, повторяем с ${attemptHistory.length} сообщениями истории`
-        )
-        continue
-      }
+        if (isUriTooLargeError(error)) {
+          conversationAiCooldownUntil = Date.now() + CONVERSATION_AI_COOLDOWN_MS
+          console.error(
+            '[generateGirlResponse] Ошибка 414 (URI Too Large). Включаем паузу на генерацию диалогов.',
+            error
+          )
+          aiResponse = buildFallbackDialogue()
+          break
+        }
 
-      if (isPromptLimitError(error)) {
-        console.warn('[generateGirlResponse] Превышен лимит токенов после повторов, используем fallback-ответ')
+        console.error('[generateGirlResponse] Ошибка генерации ответа от девушки:', error)
         aiResponse = buildFallbackDialogue()
         break
       }
 
-      throw error
+      const responseContent = completion?.choices?.[0]?.message?.content
+
+      if (!responseContent || typeof responseContent !== 'string') {
+        console.warn('[generateGirlResponse] Пустой ответ от OpenRouter, используем fallback-ответ')
+        aiResponse = buildFallbackDialogue()
+        break
+      }
+
+      const trimmed = responseContent.trim()
+      aiResponse = trimmed.length > 0 ? trimmed : buildFallbackDialogue()
     }
   }
 
