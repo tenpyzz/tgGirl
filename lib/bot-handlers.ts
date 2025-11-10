@@ -1,4 +1,4 @@
-import { createReadStream, promises as fsPromises } from 'fs'
+import { promises as fsPromises } from 'fs'
 import path from 'path'
 import { bot } from './telegram'
 import TelegramBot from 'node-telegram-bot-api'
@@ -8,6 +8,7 @@ import type OpenAI from 'openai'
 import { PACKAGES, getPackageUsdPrice, type PackageId } from './packages'
 import { getGirlPhotoPath } from './default-girls'
 import { getGirlProfile } from './girl-profiles'
+import sharp from 'sharp'
 
 // Регистрация обработчиков бота
 
@@ -131,12 +132,49 @@ async function ensureSharedPhotoFiles(): Promise<string[]> {
   return sharedPhotoFilesCache
 }
 
-function createPhotoInput(filePath: string, contentType: string) {
-  return {
-    source: createReadStream(filePath),
-    filename: path.basename(filePath),
-    contentType,
+async function preparePhotoForTelegram(
+  filePath: string,
+  originalContentType: string
+): Promise<{ buffer: Buffer; filename: string; contentType: string }> {
+  const originalBuffer = await fsPromises.readFile(filePath)
+  const parsedPath = path.parse(filePath)
+
+  let buffer = originalBuffer
+  let filename = parsedPath.base
+  let contentType = originalContentType
+
+  try {
+    const baseImage = sharp(originalBuffer, { failOnError: false })
+    const metadata = await baseImage.metadata()
+
+    let pipeline = sharp(originalBuffer, { failOnError: false }).rotate()
+
+    if (
+      (metadata.width && metadata.width > 2048) ||
+      (metadata.height && metadata.height > 2048)
+    ) {
+      pipeline = pipeline.resize({
+        width: 2048,
+        height: 2048,
+        fit: 'inside',
+        withoutEnlargement: true,
+      })
+    }
+
+    buffer = await pipeline.jpeg({
+      quality: 90,
+      chromaSubsampling: '4:4:4',
+    }).toBuffer()
+    filename = `${parsedPath.name}.jpg`
+    contentType = 'image/jpeg'
+  } catch (processingError) {
+    console.warn(
+      `[preparePhotoForTelegram] Не удалось обработать изображение ${filePath}, используем оригинал:`,
+      processingError
+    )
   }
+
+  return { buffer, filename, contentType }
 }
 
 async function getRandomSharedPhoto(): Promise<{ filePath: string; contentType: string } | null> {
@@ -265,10 +303,16 @@ export async function sendFirstMessageToUser(
           photoOptions.caption = caption
         }
 
+        const photoData = await preparePhotoForTelegram(girlPhoto.filePath, girlPhoto.contentType)
+
         await bot.sendPhoto(
           telegramUserId,
-          createReadStream(girlPhoto.filePath),
-          photoOptions
+          photoData.buffer,
+          photoOptions,
+          {
+            filename: photoData.filename,
+            contentType: photoData.contentType,
+          }
         )
 
         if (!caption) {
@@ -612,7 +656,9 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
         break
       }
 
-      throw error
+      console.error('[generatePhotoResponse] Ошибка OpenRouter при генерации фото-ответа:', error)
+      response = buildFallbackPhotoResponse()
+      break
     }
   }
 
@@ -748,12 +794,18 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
     const trimmedResponse = response.trim()
     const caption = trimmedResponse.length <= 1024 ? trimmedResponse : undefined
 
+    const photoData = await preparePhotoForTelegram(sharedPhoto.filePath, sharedPhoto.contentType)
+
     await bot.sendPhoto(
       chatId,
-      createReadStream(sharedPhoto.filePath),
+      photoData.buffer,
       {
         caption,
         reply_markup: getConversationInlineKeyboard(),
+      },
+      {
+        filename: photoData.filename,
+        contentType: photoData.contentType,
       }
     )
 
