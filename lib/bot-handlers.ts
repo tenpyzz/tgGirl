@@ -161,10 +161,12 @@ async function preparePhotoForTelegram(
       })
     }
 
-    buffer = await pipeline.jpeg({
+    const processedBuffer = await pipeline.jpeg({
       quality: 90,
       chromaSubsampling: '4:4:4',
     }).toBuffer()
+
+    buffer = Buffer.from(processedBuffer)
     filename = `${parsedPath.name}.jpg`
     contentType = 'image/jpeg'
   } catch (processingError) {
