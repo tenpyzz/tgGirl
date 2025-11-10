@@ -29,6 +29,17 @@ type TelegramInputFile = {
   contentType?: string
 }
 
+async function safeCreateChatCompletion(
+  params: OpenAI.Chat.Completions.ChatCompletionCreateParams
+): Promise<{ completion: any; error: null } | { completion: null; error: unknown }> {
+  try {
+    const completion = await openrouter.chat.completions.create(params)
+    return { completion, error: null }
+  } catch (error) {
+    return { completion: null, error }
+  }
+}
+
 function isPromptLimitError(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
     return false
@@ -631,23 +642,14 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
       ...attemptHistory,
     ]
 
-    try {
-      const completion = await openrouter.chat.completions.create({
-        model: 'deepseek/deepseek-chat',
-        messages,
-        temperature: 0.65,
-        max_tokens: 160,
-      })
+    const { completion, error } = await safeCreateChatCompletion({
+      model: 'deepseek/deepseek-chat',
+      messages,
+      temperature: 0.65,
+      max_tokens: 160,
+    })
 
-      const responseContent = completion.choices?.[0]?.message?.content
-
-      if (!responseContent || typeof responseContent !== 'string') {
-        throw new Error('Неожиданный формат ответа от OpenRouter API при генерации фото-сообщения')
-      }
-
-      const trimmed = responseContent.trim()
-      response = trimmed.length > 0 ? trimmed : buildFallbackPhotoResponse()
-    } catch (error) {
+    if (error) {
       if (isPromptLimitError(error) && attemptHistory.length > 1) {
         const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
         attemptHistory = attemptHistory.slice(-trimmedLength)
@@ -667,6 +669,17 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
       response = buildFallbackPhotoResponse()
       break
     }
+
+    const responseContent = completion?.choices?.[0]?.message?.content
+
+    if (!responseContent || typeof responseContent !== 'string') {
+      console.warn('[generatePhotoResponse] Пустой ответ от OpenRouter, используем fallback-описание фото')
+      response = buildFallbackPhotoResponse()
+      break
+    }
+
+    const trimmed = responseContent.trim()
+    response = trimmed.length > 0 ? trimmed : buildFallbackPhotoResponse()
   }
 
   if (!response || response.trim().length === 0) {
