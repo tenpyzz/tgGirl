@@ -24,17 +24,8 @@ const MAX_HISTORY_CHARACTERS = 2200
 const MAX_CONVERSATION_MESSAGES_FETCH = 8
 const MAX_CONVERSATION_CHARACTERS = 1200
 const PROMPT_MESSAGE_CHAR_LIMIT = 220
-const MAX_PHOTO_HISTORY_CHARACTERS = 1200
 
 let sharedPhotoFilesCache: string[] | null = null
-const DEFAULT_PHOTO_MODEL = 'deepseek/deepseek-chat'
-const photoModelEnv = process.env.PHOTO_RESPONSE_MODEL || ''
-const PHOTO_RESPONSE_MODEL =
-  photoModelEnv.trim().toLowerCase() === 'disabled'
-    ? null
-    : (photoModelEnv.trim() || DEFAULT_PHOTO_MODEL)
-const PHOTO_AI_COOLDOWN_MS = 10 * 60 * 1000
-let photoAiCooldownUntil = 0
 const CONVERSATION_AI_COOLDOWN_MS = 5 * 60 * 1000
 let conversationAiCooldownUntil = 0
 
@@ -140,27 +131,20 @@ const FALLBACK_DIALOGUES = [
 Скажи это снова, я хочу шептать ответ прямо тебе в губы.`,
 ]
 
-const FALLBACK_PHOTO_DIALOGUES = [
-  `*Я держу телефон прямо у твоих губ, не отрывая взгляда*
-
-Это фото только для тебя, смотри и скажи, чего хочешь.`,
-  `*Я подаюсь ближе, позволяя тебе рассмотреть каждый изгиб*
-
-Держи моё фото, я сняла это ради тебя — скажи, что чувствуешь.`,
-  `*Я касаюсь губами твоего уха и протягиваю снимок*
-
-Глянь на этот кадр и расскажи, что хочешь со мной сделать.`,
-]
-
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]
 }
 
 const lastDialogueFallbackByChat = new Map<number, string>()
+const lastPhotoCaptionByChat = new Map<number, string>()
 
-function buildFallbackPhotoResponse(): string {
-  return pickRandom(FALLBACK_PHOTO_DIALOGUES)
-}
+const PHOTO_CAPTIONS = [
+  `Смотри, это для тебя. Удержи взгляд и скажи, чего хочешь дальше.`,
+  `Я сняла это фото специально для тебя. Шепни, что сделать теперь.`,
+  `Рассмотри меня внимательнее. Я хочу слышать, как ты реагируешь.`,
+  `Держи это горячее фото. Не молчи — скажи, что мечтаешь сделать.`,
+  `Я полностью твоя в этом кадре. Подскажи, куда ведём игру дальше.`,
+]
 
 function getFallbackDialogue(chatId?: number): string {
   let choice = pickRandom(FALLBACK_DIALOGUES)
@@ -174,6 +158,23 @@ function getFallbackDialogue(chatId?: number): string {
       }
     }
     lastDialogueFallbackByChat.set(chatId, choice)
+  }
+
+  return choice
+}
+
+function getPhotoCaption(chatId?: number): string {
+  let choice = pickRandom(PHOTO_CAPTIONS)
+
+  if (chatId !== undefined) {
+    const lastValue = lastPhotoCaptionByChat.get(chatId)
+    if (lastValue && PHOTO_CAPTIONS.length > 1 && choice === lastValue) {
+      const alternativePool = PHOTO_CAPTIONS.filter((item) => item !== lastValue)
+      if (alternativePool.length > 0) {
+        choice = pickRandom(alternativePool)
+      }
+    }
+    lastPhotoCaptionByChat.set(chatId, choice)
   }
 
   return choice
@@ -474,7 +475,8 @@ export async function sendFirstMessageToUser(
     if (girlPhoto) {
       try {
         await bot.sendChatAction(telegramUserId, 'upload_photo')
-        const caption = firstMessage.length <= 1024 ? firstMessage : undefined
+        const photoCaption = getPhotoCaption()
+        const caption = photoCaption.length <= 1024 ? photoCaption : undefined
 
         const photoOptions: TelegramBot.SendPhotoOptions = {
           reply_markup: getConversationInlineKeyboard(),
@@ -488,11 +490,9 @@ export async function sendFirstMessageToUser(
 
         await sendPreparedPhoto(telegramUserId, photoData, photoOptions)
 
-        if (!caption) {
-          await bot.sendMessage(telegramUserId, firstMessage, {
-            reply_markup: getConversationInlineKeyboard(),
-          })
-        }
+        await bot.sendMessage(telegramUserId, firstMessage, {
+          reply_markup: getConversationInlineKeyboard(),
+        })
 
         console.log(`[sendFirstMessageToUser] Фото и первое сообщение отправлены пользователю`)
         return true
@@ -763,128 +763,6 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   return aiResponse
 }
 
-async function generatePhotoResponse(chatId: number, girlId: number): Promise<string> {
-  const girl = await prisma.girl.findUnique({
-    where: { id: girlId },
-  })
-
-  if (!girl) {
-    throw new Error('Девушка не найдена')
-  }
-
-  const photoPersona = buildPersonaPrompt(girl.id, girl.name)
-  const photoSystemPrompt = `Ты — ${girl.name}. Вы рядом, и ты держишь своё откровенное фото прямо перед пользователем. Никаких телефонов или переписок.
-Формат: строка действия в *звёздочках*, пустая строка, затем ровно одно короткое предложение (до 12 слов) обычным текстом. Общая длина не больше 50 слов. Опиши кадр, свои ощущения и подчёркни взаимное согласие.
-Характер: ${photoPersona}
-Стиль: ${girl.systemPrompt}`
-
-  let response: string | null = null
-
-  const now = Date.now()
-
-  if (!PHOTO_RESPONSE_MODEL) {
-    console.warn('[generatePhotoResponse] Генерация описания фото отключена (PHOTO_RESPONSE_MODEL=disabled)')
-  } else if (photoAiCooldownUntil > now) {
-    const secondsLeft = Math.ceil((photoAiCooldownUntil - now) / 1000)
-    console.warn(
-      `[generatePhotoResponse] Пропускаем обращение к AI из-за недавней ошибки (ещё ${secondsLeft} сек.)`
-    )
-  } else {
-    const chatHistory = await prisma.message.findMany({
-      where: {
-        chatId,
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-      take: 6,
-    })
-
-    const lastUserMessage = chatHistory
-      .find((message) => message.role === 'user')
-      ?.content?.trim()
-      ?.slice(-280)
-
-    const userPromptLines = [
-      'Сгенерируй одно короткое предложение (до 12 слов) от лица девушки, описывая горячее фото, которое она показывает прямо перед мужчиной. Тон — согласованный, властный и заигрывающий.',
-      'Не упоминай телефоны, переписки или камеры — вы рядом вживую.',
-    ]
-
-    if (lastUserMessage && lastUserMessage.length > 0) {
-      userPromptLines.push(`Учитывай последние слова мужчины: "${lastUserMessage}".`)
-    }
-
-    const userPrompt = userPromptLines.join('\n\n')
-
-    const { completion, error } = await safeCreateChatCompletion({
-      model: PHOTO_RESPONSE_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: photoSystemPrompt,
-        },
-        {
-          role: 'user',
-          content: userPrompt,
-        },
-      ],
-      temperature: 0.6,
-      max_tokens: 120,
-    })
-
-    if (error) {
-      if (isUriTooLargeError(error)) {
-        photoAiCooldownUntil = Date.now() + PHOTO_AI_COOLDOWN_MS
-        console.error(
-          '[generatePhotoResponse] Получена ошибка 414 (URI Too Large). Включаем паузу на обращение к AI для фото.',
-          error
-        )
-      } else if (!isPromptLimitError(error)) {
-        console.error('[generatePhotoResponse] Ошибка генерации фото-описания:', error)
-      } else {
-        console.warn('[generatePhotoResponse] Превышен лимит токенов, используем fallback-описание фото')
-      }
-    } else {
-      const responseContent = completion?.choices?.[0]?.message?.content
-
-      if (responseContent && typeof responseContent === 'string') {
-        const trimmed = responseContent.trim()
-        if (trimmed.length > 0) {
-          response = trimmed
-        }
-      }
-    }
-  }
-
-  if (!response || response.trim().length === 0) {
-    response = buildFallbackPhotoResponse()
-  }
-
-  const dialogLineCandidate = response
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .find((line) => !line.startsWith('*')) || 'Это фото я сделала специально для тебя.'
-
-  const dialogWords = dialogLineCandidate.split(/\s+/)
-  let dialogLine = dialogWords.length > 12 ? dialogWords.slice(0, 12).join(' ') : dialogLineCandidate
-  if (!dialogLine.endsWith('.') && !dialogLine.endsWith('!') && !dialogLine.endsWith('?')) {
-    dialogLine += '.'
-  }
-
-  const finalResponse = dialogLine
-
-  await prisma.message.create({
-    data: {
-      chatId,
-      role: 'assistant',
-      content: finalResponse,
-    },
-  })
-
-  return finalResponse
-}
-
 async function handlePhotoRequest(telegramUserId: number, chatId: number, from: TelegramBot.User) {
   let photoDecremented = false
 
@@ -984,20 +862,18 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
 
     await bot.sendChatAction(chatId, 'upload_photo')
 
-    let aiPhotoResponse = buildFallbackPhotoResponse()
-    try {
-      const response = await generatePhotoResponse(chatRecord.id, user.selectedGirlId)
-      const trimmed = response.trim()
-      if (trimmed.length > 0) {
-        aiPhotoResponse = trimmed
-      }
-    } catch (responseError) {
-      console.error('[handlePhotoRequest] Ошибка генерации описания фото, используем fallback:', responseError)
-    }
-
-    const caption = aiPhotoResponse.length <= 1024 ? aiPhotoResponse : undefined
+    const photoCaption = getPhotoCaption(chatRecord.id)
+    const caption = photoCaption.length <= 1024 ? photoCaption : undefined
 
     const photoData = await preparePhotoForTelegram(sharedPhoto.filePath, sharedPhoto.contentType)
+
+    await prisma.message.create({
+      data: {
+        chatId: chatRecord.id,
+        role: 'assistant',
+        content: photoCaption,
+      },
+    })
 
     await sendPreparedPhoto(chatId, photoData, {
       caption,
@@ -1005,7 +881,7 @@ async function handlePhotoRequest(telegramUserId: number, chatId: number, from: 
     })
 
     if (!caption) {
-      await bot.sendMessage(chatId, aiPhotoResponse, {
+      await bot.sendMessage(chatId, photoCaption, {
         reply_markup: getConversationInlineKeyboard(),
       })
     }
