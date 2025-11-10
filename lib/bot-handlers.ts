@@ -641,7 +641,8 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
         throw new Error('Неожиданный формат ответа от OpenRouter API при генерации фото-сообщения')
       }
 
-      response = responseContent.trim()
+      const trimmed = responseContent.trim()
+      response = trimmed.length > 0 ? trimmed : buildFallbackPhotoResponse()
     } catch (error) {
       if (isPromptLimitError(error) && attemptHistory.length > 1) {
         const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
@@ -664,8 +665,8 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
     }
   }
 
-  if (!response) {
-    throw new Error('Не удалось получить ответ для фото')
+  if (!response || response.trim().length === 0) {
+    response = buildFallbackPhotoResponse()
   }
 
   const dialogLineCandidate = response
