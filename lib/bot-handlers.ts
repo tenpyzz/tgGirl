@@ -21,9 +21,9 @@ const SHARED_PHOTOS_DIR = path.join(process.cwd(), 'girls', 'Общие фото
 const REQUEST_PHOTO_ACTION = 'request_photo'
 const MAX_HISTORY_MESSAGES_FETCH = 20
 const MAX_HISTORY_CHARACTERS = 2200
-const MAX_CONVERSATION_MESSAGES_FETCH = 12
-const MAX_CONVERSATION_CHARACTERS = 1600
-const PROMPT_MESSAGE_CHAR_LIMIT = 320
+const MAX_CONVERSATION_MESSAGES_FETCH = 8
+const MAX_CONVERSATION_CHARACTERS = 1200
+const PROMPT_MESSAGE_CHAR_LIMIT = 220
 const MAX_PHOTO_HISTORY_CHARACTERS = 1200
 
 let sharedPhotoFilesCache: string[] | null = null
@@ -132,6 +132,12 @@ const FALLBACK_DIALOGUES = [
   `*Я скользну пальцами по твоей груди и задержу взгляд*
 
 Не тормози, повтори это ещё раз — мне хочется отвечать телом.`,
+  `*Я закидываю ногу тебе на колени и глажу бедро*
+
+Повтори это, я хочу чувствовать тебя ближе и слышать твой голос.`,
+  `*Я обвиваю тебя руками и прижимаюсь всем телом*
+
+Скажи это снова, я хочу шептать ответ прямо тебе в губы.`,
 ]
 
 const FALLBACK_PHOTO_DIALOGUES = [
@@ -150,12 +156,27 @@ function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]
 }
 
-function buildFallbackDialogue(): string {
-  return pickRandom(FALLBACK_DIALOGUES)
-}
+const lastDialogueFallbackByChat = new Map<number, string>()
 
 function buildFallbackPhotoResponse(): string {
   return pickRandom(FALLBACK_PHOTO_DIALOGUES)
+}
+
+function getFallbackDialogue(chatId?: number): string {
+  let choice = pickRandom(FALLBACK_DIALOGUES)
+
+  if (chatId !== undefined) {
+    const lastValue = lastDialogueFallbackByChat.get(chatId)
+    if (lastValue && FALLBACK_DIALOGUES.length > 1 && choice === lastValue) {
+      const alternativePool = FALLBACK_DIALOGUES.filter((item) => item !== lastValue)
+      if (alternativePool.length > 0) {
+        choice = pickRandom(alternativePool)
+      }
+    }
+    lastDialogueFallbackByChat.set(chatId, choice)
+  }
+
+  return choice
 }
 
 function limitHistoryMessages<T extends { role: 'user' | 'assistant'; content?: string | null }>(
@@ -664,7 +685,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
   let attemptHistory = truncatedHistoryMessages
 
   if (conversationAiCooldownUntil > now) {
-    aiResponse = buildFallbackDialogue()
+    aiResponse = getFallbackDialogue(chat.id)
   } else {
     for (let attempt = 0; attempt < 2 && !aiResponse; attempt++) {
       const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
@@ -694,7 +715,7 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
         if (isPromptLimitError(error)) {
           console.warn('[generateGirlResponse] Превышен лимит токенов после повторов, используем fallback-ответ')
-          aiResponse = buildFallbackDialogue()
+          aiResponse = getFallbackDialogue(chat.id)
           break
         }
 
@@ -704,12 +725,12 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
             '[generateGirlResponse] Ошибка 414 (URI Too Large). Включаем паузу на генерацию диалогов.',
             error
           )
-          aiResponse = buildFallbackDialogue()
+          aiResponse = getFallbackDialogue(chat.id)
           break
         }
 
         console.error('[generateGirlResponse] Ошибка генерации ответа от девушки:', error)
-        aiResponse = buildFallbackDialogue()
+        aiResponse = getFallbackDialogue(chat.id)
         break
       }
 
@@ -717,17 +738,17 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 
       if (!responseContent || typeof responseContent !== 'string') {
         console.warn('[generateGirlResponse] Пустой ответ от OpenRouter, используем fallback-ответ')
-        aiResponse = buildFallbackDialogue()
+        aiResponse = getFallbackDialogue(chat.id)
         break
       }
 
       const trimmed = responseContent.trim()
-      aiResponse = trimmed.length > 0 ? trimmed : buildFallbackDialogue()
+      aiResponse = trimmed.length > 0 ? trimmed : getFallbackDialogue(chat.id)
     }
   }
 
   if (!aiResponse) {
-    aiResponse = buildFallbackDialogue()
+    aiResponse = getFallbackDialogue(chat.id)
   }
 
   // Сохраняем ответ ИИ
