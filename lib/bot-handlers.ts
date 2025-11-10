@@ -22,6 +22,14 @@ const MAX_HISTORY_CHARACTERS = 2200
 const MAX_PHOTO_HISTORY_CHARACTERS = 1200
 
 let sharedPhotoFilesCache: string[] | null = null
+const DEFAULT_PHOTO_MODEL = 'deepseek/deepseek-chat'
+const photoModelEnv = process.env.PHOTO_RESPONSE_MODEL || ''
+const PHOTO_RESPONSE_MODEL =
+  photoModelEnv.trim().toLowerCase() === 'disabled'
+    ? null
+    : (photoModelEnv.trim() || DEFAULT_PHOTO_MODEL)
+const PHOTO_AI_COOLDOWN_MS = 10 * 60 * 1000
+let photoAiCooldownUntil = 0
 
 type TelegramInputFile = {
   source: Buffer
@@ -51,6 +59,29 @@ function isPromptLimitError(error: unknown): boolean {
   }
 
   if (maybeError?.error?.code === 402 || maybeError?.error?.type === 'prompt_tokens_exceeded') {
+    return true
+  }
+
+  return false
+}
+
+function isUriTooLargeError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as Record<string, any>
+  if (maybeError.status === 414 || maybeError.statusCode === 414) {
+    return true
+  }
+
+  const message = typeof maybeError.message === 'string' ? maybeError.message : ''
+  if (message.includes('414') || message.toLowerCase().includes('uri too large')) {
+    return true
+  }
+
+  const responseStatus = maybeError?.response?.status
+  if (responseStatus === 414) {
     return true
   }
 
@@ -590,16 +621,6 @@ async function generateGirlResponse(userId: number, girlId: number, userMessage:
 }
 
 async function generatePhotoResponse(chatId: number, girlId: number): Promise<string> {
-  const chatHistory = await prisma.message.findMany({
-    where: {
-      chatId,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-    take: MAX_HISTORY_MESSAGES_FETCH,
-  })
-
   const girl = await prisma.girl.findUnique({
     where: { id: girlId },
   })
@@ -614,72 +635,82 @@ async function generatePhotoResponse(chatId: number, girlId: number): Promise<st
 Характер: ${photoPersona}
 Стиль: ${girl.systemPrompt}`
 
-  const orderedHistory = chatHistory.slice().reverse()
-
-  const historyMessages: Array<{ role: 'user' | 'assistant'; content: string }> = orderedHistory.map((message) => ({
-    role: (message.role === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
-    content: message.content,
-  }))
-
-  const limitedHistoryMessages = limitHistoryMessages(historyMessages, MAX_PHOTO_HISTORY_CHARACTERS)
-
-  const historyMessagesForCompletion: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = limitedHistoryMessages.map(
-    (message) => ({
-      role: message.role,
-      content: message.content,
-    })
-  )
-
   let response: string | null = null
-  let attemptHistory = historyMessagesForCompletion
 
-  for (let attempt = 0; attempt < 2 && !response; attempt++) {
-    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-      {
-        role: 'system',
-        content: photoSystemPrompt,
+  const now = Date.now()
+
+  if (!PHOTO_RESPONSE_MODEL) {
+    console.warn('[generatePhotoResponse] Генерация описания фото отключена (PHOTO_RESPONSE_MODEL=disabled)')
+  } else if (photoAiCooldownUntil > now) {
+    const secondsLeft = Math.ceil((photoAiCooldownUntil - now) / 1000)
+    console.warn(
+      `[generatePhotoResponse] Пропускаем обращение к AI из-за недавней ошибки (ещё ${secondsLeft} сек.)`
+    )
+  } else {
+    const chatHistory = await prisma.message.findMany({
+      where: {
+        chatId,
       },
-      ...attemptHistory,
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: 6,
+    })
+
+    const lastUserMessage = chatHistory
+      .find((message) => message.role === 'user')
+      ?.content?.trim()
+      ?.slice(-280)
+
+    const userPromptLines = [
+      'Сгенерируй одно короткое предложение (до 12 слов) от лица девушки, описывая горячее фото, которое она показывает прямо перед мужчиной. Тон — согласованный, властный и заигрывающий.',
+      'Не упоминай телефоны, переписки или камеры — вы рядом вживую.',
     ]
 
+    if (lastUserMessage && lastUserMessage.length > 0) {
+      userPromptLines.push(`Учитывай последние слова мужчины: "${lastUserMessage}".`)
+    }
+
+    const userPrompt = userPromptLines.join('\n\n')
+
     const { completion, error } = await safeCreateChatCompletion({
-      model: 'deepseek/deepseek-chat',
-      messages,
-      temperature: 0.65,
-      max_tokens: 160,
+      model: PHOTO_RESPONSE_MODEL,
+      messages: [
+        {
+          role: 'system',
+          content: photoSystemPrompt,
+        },
+        {
+          role: 'user',
+          content: userPrompt,
+        },
+      ],
+      temperature: 0.6,
+      max_tokens: 120,
     })
 
     if (error) {
-      if (isPromptLimitError(error) && attemptHistory.length > 1) {
-        const trimmedLength = Math.max(1, Math.floor(attemptHistory.length / 2))
-        attemptHistory = attemptHistory.slice(-trimmedLength)
-        console.warn(
-          `[generatePhotoResponse] Превышен лимит токенов, повторяем с ${attemptHistory.length} сообщениями истории`
+      if (isUriTooLargeError(error)) {
+        photoAiCooldownUntil = Date.now() + PHOTO_AI_COOLDOWN_MS
+        console.error(
+          '[generatePhotoResponse] Получена ошибка 414 (URI Too Large). Включаем паузу на обращение к AI для фото.',
+          error
         )
-        continue
+      } else if (!isPromptLimitError(error)) {
+        console.error('[generatePhotoResponse] Ошибка генерации фото-описания:', error)
+      } else {
+        console.warn('[generatePhotoResponse] Превышен лимит токенов, используем fallback-описание фото')
       }
+    } else {
+      const responseContent = completion?.choices?.[0]?.message?.content
 
-      if (isPromptLimitError(error)) {
-        console.warn('[generatePhotoResponse] Превышен лимит токенов после повторов, используем fallback-описание фото')
-        response = buildFallbackPhotoResponse()
-        break
+      if (responseContent && typeof responseContent === 'string') {
+        const trimmed = responseContent.trim()
+        if (trimmed.length > 0) {
+          response = trimmed
+        }
       }
-
-      console.error('[generatePhotoResponse] Ошибка OpenRouter при генерации фото-ответа:', error)
-      response = buildFallbackPhotoResponse()
-      break
     }
-
-    const responseContent = completion?.choices?.[0]?.message?.content
-
-    if (!responseContent || typeof responseContent !== 'string') {
-      console.warn('[generatePhotoResponse] Пустой ответ от OpenRouter, используем fallback-описание фото')
-      response = buildFallbackPhotoResponse()
-      break
-    }
-
-    const trimmed = responseContent.trim()
-    response = trimmed.length > 0 ? trimmed : buildFallbackPhotoResponse()
   }
 
   if (!response || response.trim().length === 0) {
